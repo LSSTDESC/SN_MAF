@@ -18,25 +18,25 @@ def run(config_filename):
     # YAML input file.
     config = yaml.load(open(config_filename))
     print(config)
-    outDir ='Test'
+    outDir ='Test' # this is for MAF
 
-    dbFile = '/data/pgris/sims_operation/Run_OpSim/enigma_1189_sqlite.db'
-    dbFile='../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db'
-    #dbFile = '/data/pgris/sims_operation/Run_OpSim/clrlsstsrv_1068_sqlite.db'
+    # grab the db filename from yaml input file 
+    dbFile=config['Observations']['filename']
+    
     #opsimdb = utils.connectOpsimDb(dbFile)
     #resultsDb = db.ResultsDb(outDir=outDir)
     opsimdb = db.OpsimDatabase(dbFile)
     version = opsimdb.opsimVersion
     propinfo, proptags = opsimdb.fetchPropInfo()
     print('hello',proptags,propinfo)
-    
-    field='DD'
-    #field='WFD'
+
+    # grab the fieldtype (DD or WFD) from yaml input file
+    fieldtype = config['Observations']['fieldtype']
     
     metric=SNSimulation(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
     #slicer = slicers.HealpixSlicer(nside=256)
     slicer=slicers.OpsimFieldSlicer()
-    sqlconstraint = opsimdb.createSQLWhere(field, proptags)
+    sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
     #sqlconstraint = utils.createSQLWhere('WFD', proptags)
     mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
 

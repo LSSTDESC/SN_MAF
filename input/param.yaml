@@ -35,8 +35,8 @@ Instrument:
    atmos : True  #atmos
    aerosol : False  #aerosol
 Observations: 
-   filename: Fake_Obs.npy   # Name of obs file
-   dirname : ../Ana_npy/    # dir of obs file
+   filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
+   fieldtype: DD #DD or WFD
 Simulator :
     name : SN_Cosmo           # Simulator name: SN_Cosmo,SN_Sim,SN_Ana
     model : salt2-extended   # spectra model
