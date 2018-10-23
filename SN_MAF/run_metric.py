@@ -4,10 +4,11 @@ import lsst.sims.maf.metricBundles as metricBundles
 import lsst.sims.maf.slicers as slicers
 import lsst.sims.maf.db as db
 import lsst.sims.maf.utils as utils
-from SN_Simulation import SNSimulation
+#from SN_Simulation import SNSimulation
 import argparse
 import time
 import yaml
+from importlib import import_module
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -33,7 +34,8 @@ def run(config_filename):
     # grab the fieldtype (DD or WFD) from yaml input file
     fieldtype = config['Observations']['fieldtype']
     
-    metric=SNSimulation(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
+    module = import_module(config['Metric'])
+    metric=module.SNMetric(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
     #slicer = slicers.HealpixSlicer(nside=256)
     slicer=slicers.OpsimFieldSlicer()
     sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)

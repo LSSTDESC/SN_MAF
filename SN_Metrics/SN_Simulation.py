@@ -2,11 +2,11 @@ import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
 
 
-class SNSimulation(BaseMetric):
+class SNMetric(BaseMetric):
     """
     Measure how many time series meet a given time and filter distribution requirement.
     """
-    def __init__(self, metricName='SNSimulation',
+    def __init__(self, metricName='SNMetric',
                  mjdCol='observationStartMJD', filterCol='filter', m5Col='fiveSigmaDepth',
                  units='', redshift=0.,
                  Tmin = -20., Tmax = 60., Nbetween=7, Nfilt={'u':0,'g':10,'r':10,'i':10,'z':5,'y':5}, Nfilt_obs=5,Tless = -5., Nless=1,
@@ -62,7 +62,7 @@ class SNSimulation(BaseMetric):
                                               metricName=metricName, units=units, badval=badval,
                                               **kwargs)
         """
-        super(SNSimulation, self).__init__(col=['fiveSigmaDepth','filter',self.mjdCol],metricName=metricName, units=units, badval=badval,**kwargs)
+        super(SNMetric, self).__init__(col=['fiveSigmaDepth','filter',self.mjdCol],metricName=metricName, units=units, badval=badval,**kwargs)
         self.redshift = redshift
         self.Tmin = Tmin
         self.Tmax = Tmax

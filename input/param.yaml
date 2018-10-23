@@ -48,3 +48,4 @@ Output:
     save: True
 Multiprocessing:
     nproc: 4
+Metric: SN_Simulation
