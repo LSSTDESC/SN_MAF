@@ -23,6 +23,7 @@ def run(config_filename):
     # grab the db filename from yaml input file 
     dbFile=config['Observations']['filename']
 
+    """
     conn = sqlite3.connect(dbFile)
     cur = conn.cursor()
     table_name='Proposal'
@@ -38,27 +39,24 @@ def run(config_filename):
     
     names = [tup[1] for tup in cur.fetchall()]
     print(names)
-    
-    #opsimdb = utils.connectOpsimDb(dbFile)
-    #resultsDb = db.ResultsDb(outDir=outDir)
+    """
     opsimdb = db.OpsimDatabase(dbFile)
     version = opsimdb.opsimVersion
     propinfo, proptags = opsimdb.fetchPropInfo()
-    print('hello',proptags,propinfo)
+    print('proptags and propinfo',proptags,propinfo)
 
     # grab the fieldtype (DD or WFD) from yaml input file
     fieldtype = config['Observations']['fieldtype']
     
     module = import_module(config['Metric'])
     
-    slicer = slicers.HealpixSlicer(nside=64)
+    slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
 
-    print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
-    # metric=module.SNMetric(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
-    metric=module.SNMetric(redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200., config=config)
+    # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
+    
+    metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'])
     
     sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
-    print('hello',sqlconstraint)
     
     mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
     

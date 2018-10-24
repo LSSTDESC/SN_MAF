@@ -1,4 +1,4 @@
-ProductionID: Fake_Obs
+ProductionID: DD_baseline2018a
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
@@ -36,16 +36,21 @@ Instrument:
    aerosol : False  #aerosol
 Observations: 
    filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
-   fieldtype: DD #DD or WFD
+   fieldtype: WFD #DD or WFD
+   coadd: False # this is the coaddition per night
 Simulator :
     name : SN_Cosmo           # Simulator name: SN_Cosmo,SN_Sim,SN_Ana
     model : salt2-extended   # spectra model
     version : 1.0                     #version
 Host Parameters: None         # Host parameters
-Display : True #display during LC simulations
+Display_LC : #display during LC simulations
+   display: False
+   time: 60 #display during time (sec) before closing
 Output:
     directory: Output_Simu
     save: True
 Multiprocessing:
-    nproc: 1
+    nproc: 4
 Metric: SN_Metric_Simulation
+Pixelisation:
+    nside: 64
