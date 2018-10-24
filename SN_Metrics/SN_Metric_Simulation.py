@@ -1,6 +1,7 @@
 import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
 from SN_Simulation import SN_Simulation
+from Coadd_Stacker import CoaddStacker
 
 class SNMetric(BaseMetric):
     """
@@ -62,7 +63,7 @@ class SNMetric(BaseMetric):
                                               metricName=metricName, units=units, badval=badval,
                                               **kwargs)
         """
-        super(SNMetric, self).__init__(col=['night','fiveSigmaDepth','filter',self.mjdCol,'observationId','airmass','numExposures', 'visitTime', 'visitExposureTime','coadd','season'],metricName=metricName, units=units, badval=badval,**kwargs)
+        super(SNMetric, self).__init__(col=['night','fiveSigmaDepth','filter',self.mjdCol,'observationId','airmass','numExposures', 'visitTime', 'visitExposureTime','season','coadd'],metricName=metricName, units=units, badval=badval,**kwargs)
         self.redshift = redshift
         self.Tmin = Tmin
         self.Tmax = Tmax

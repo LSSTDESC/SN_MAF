@@ -21,14 +21,10 @@ class CoaddStacker(BaseStacker):
         self.units = ['int']
         
     def _run(self, simData, cols_present = False):
-        """
         if cols_present:
             # Column already present in data; assume it is correct and does not need recalculating.
             return simData
-        """
-        #print('running')
         self.dtype = simData.dtype
-        #print('running',dtype,dtype.names)
         r= []
         for ra, dec, band in np.unique(simData[[self.RaCol, self.DecCol, self.filterCol]]):
             idx = np.abs(simData[self.RaCol]-ra) < 1.e-5
