@@ -1,14 +1,13 @@
 import matplotlib.pyplot as plt
 import lsst.sims.maf.metricBundles as metricBundles
-#import lsst.sims.maf.metrics as metrics
 import lsst.sims.maf.slicers as slicers
 import lsst.sims.maf.db as db
 import lsst.sims.maf.utils as utils
-#from SN_Simulation import SNSimulation
 import argparse
 import time
 import yaml
 from importlib import import_module
+import sqlite3
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -18,12 +17,29 @@ parser.add_argument('config_filename',
 def run(config_filename):
     # YAML input file.
     config = yaml.load(open(config_filename))
-    print(config)
+    #print(config)
     outDir ='Test' # this is for MAF
 
     # grab the db filename from yaml input file 
     dbFile=config['Observations']['filename']
+
+    """
+    conn = sqlite3.connect(dbFile)
+    cur = conn.cursor()
+    table_name='Proposal'
+    result = cur.execute("PRAGMA table_info('%s')" % table_name).fetchall()
+    print('Results',result)
+
+    cur.execute("SELECT * FROM Proposal")
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
+    print('end')
+    cur.execute('PRAGMA TABLE_INFO({})'.format('ObsHistory'))
     
+    names = [tup[1] for tup in cur.fetchall()]
+    print(names)
+    """
     #opsimdb = utils.connectOpsimDb(dbFile)
     #resultsDb = db.ResultsDb(outDir=outDir)
     opsimdb = db.OpsimDatabase(dbFile)
@@ -35,21 +51,27 @@ def run(config_filename):
     fieldtype = config['Observations']['fieldtype']
     
     module = import_module(config['Metric'])
-    metric=module.SNMetric(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
-    #slicer = slicers.HealpixSlicer(nside=256)
-    slicer=slicers.OpsimFieldSlicer()
-    sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
-    #sqlconstraint = utils.createSQLWhere('WFD', proptags)
-    mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
+    
+    slicer = slicers.HealpixSlicer(nside=64)
 
+    print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
+    # metric=module.SNMetric(m5Col='fiveSigmaDepth', redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200.)
+    metric=module.SNMetric(redshift=0.1, resolution=80.,Nbetween=10,singleDepthLimit=21.,peakGap=200., config=config)
+    
+    sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
+    print('hello',sqlconstraint)
+    
+    mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
+    
     mbD = {0:mb}
 
     resultsDb = db.ResultsDb(outDir=outDir)
+
     mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
                                       outDir=outDir, resultsDb=resultsDb)
 
     mbg.runAll()
-
+    
     #mbg.plotAll(closefigs=False)
     #plt.show()
 

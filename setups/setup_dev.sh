@@ -7,6 +7,7 @@ source /cvmfs/sw.lsst.eu/linux-x86_64/lsst_sims/sims_2_8_0/loadLSST.bash
 setup lsst_sims
 
 export PYTHONPATH=${PWD}/SN_MAF/SN_Metrics:$PYTHONPATH
+export PYTHONPATH=${PWD}/SN_MAF/SN_Stackers:$PYTHONPATH
 
 if [ ! -d ${PWD}/SN_Catalog_Simulations ]
 then

@@ -1,6 +1,6 @@
 import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
-
+from SN_Simulation import SN_Simulation
 
 class SNMetric(BaseMetric):
     """
@@ -12,7 +12,7 @@ class SNMetric(BaseMetric):
                  Tmin = -20., Tmax = 60., Nbetween=7, Nfilt={'u':0,'g':10,'r':10,'i':10,'z':5,'y':5}, Nfilt_obs=5,Tless = -5., Nless=1,
                  Tmore = 30., Nmore=1, peakGap=2., snrCut=10., singleDepthLimit=23.,
                  resolution=5., badval=-666,
-                 uniqueBlocks=False, **kwargs):
+                 uniqueBlocks=False, config=None,**kwargs):
         """
         redshift = redshift of the SN.  Used to scale observing dates to SN restframe.
         Tmin = the minimum day to consider the SN.
@@ -62,7 +62,7 @@ class SNMetric(BaseMetric):
                                               metricName=metricName, units=units, badval=badval,
                                               **kwargs)
         """
-        super(SNMetric, self).__init__(col=['fiveSigmaDepth','filter',self.mjdCol],metricName=metricName, units=units, badval=badval,**kwargs)
+        super(SNMetric, self).__init__(col=['night','fiveSigmaDepth','filter',self.mjdCol,'observationId','airmass','numExposures', 'visitTime', 'visitExposureTime','coadd','season'],metricName=metricName, units=units, badval=badval,**kwargs)
         self.redshift = redshift
         self.Tmin = Tmin
         self.Tmax = Tmax
@@ -78,7 +78,40 @@ class SNMetric(BaseMetric):
         self.resolution = resolution
         self.uniqueBlocks = uniqueBlocks
         self.filterNames = np.array(['u','g','r','i','z','y'])
-      
+        self.config = config
+        print('hello', self.config)
+
+        # load cosmology
+        cosmo_par = config['Cosmology']
+        # load telescope
+        tel_par = config['Instrument']
+
+        # this is for output
+
+        save_status = config['Output']['save']
+        outdir = config['Output']['directory']
+        prodid = config['ProductionID']
+        # sn parameters
+        sn_parameters = config['SN parameters']
+
+        simu_config = config['Simulator']
+        display_lc = config['Display']
+
+        names = dict(zip(['band', 'mjd', 'rawSeeing', 'sky', 'exptime',
+                      'moonPhase', 'Ra', 'Dec', 'Nexp', 'fiveSigmaDepth',
+                      'seeing', 'airmass', 'night', 'season', 'pixarea',
+                      'pixRa', 'pixDec'],
+                     ['band', 'mjd', 'seeingFwhm500', 'sky', 'exptime',
+                      'moonPhase', 'Ra', 'Dec', 'numExposures',
+                      'fiveSigmaDepth', 'seeingFwhmEff', 'airmass',
+                      'night', 'season', 'pixarea',
+                     'pixRa', 'pixDec']))
+
+        self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
+                             save_status, outdir, prodid,
+                             simu_config, display_lc, names=names,nproc=config['Multiprocessing']['nproc'])
+
+        
 
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
@@ -89,10 +122,8 @@ class SNMetric(BaseMetric):
         if dataSlice.size == 0:
             return (self.badval, self.badval,self.badval)
         dataSlice.sort(order=self.mjdCol)
-        print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec']]))
-        time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()  
-
-        #print('time',time)
+        print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
+        time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
         #print 'time in Rest frame',len(time),time[191],time[192],time[1380],time[1381],time[1382]
         # Creat time steps to evaluate at
