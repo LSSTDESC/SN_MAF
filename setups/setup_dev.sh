@@ -9,6 +9,7 @@ setup lsst_sims
 export PYTHONPATH=${PWD}/SN_MAF/SN_Metrics:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_MAF/SN_Stackers:$PYTHONPATH
 
+thedir=${PWD}/lib/python3.6/site-packages/
 if [ ! -d ${PWD}/SN_Catalog_Simulations ]
 then
     echo "Seems that the simulation packages you need are not installed."
@@ -28,7 +29,6 @@ then
    
     #checking whether hdf5 is accessible localy or not
     lib='h5py'
-    thedir=${PWD}/lib/python3.6/site-packages/
     echo $thedir
     if [ -d ${thedir}$lib ]
     then
