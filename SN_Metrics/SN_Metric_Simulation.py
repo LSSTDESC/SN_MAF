@@ -8,7 +8,8 @@ class SNMetric(BaseMetric):
     Measure how many time series meet a given time and filter distribution requirement.
     """
     def __init__(self, metricName='SNMetric',
-                 mjdCol='observationStartMJD', filterCol='filter', m5Col='fiveSigmaDepth',
+                 mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',
+                 filterCol='filter', m5Col='fiveSigmaDepth',exptimeCol='visitExposureTime',
                  units='', redshift=0.,
                  Tmin = -20., Tmax = 60., Nbetween=7, Nfilt={'u':0,'g':10,'r':10,'i':10,'z':5,'y':5}, Nfilt_obs=5,Tless = -5., Nless=1,
                  Tmore = 30., Nmore=1, peakGap=2., snrCut=10., singleDepthLimit=23.,
@@ -43,41 +44,23 @@ class SNMetric(BaseMetric):
         In the science book, the metric demands Nfilt observations above a SNR cut.
         Here, we demand Nfilt observations near the peak with a given singleDepthLimt.
         """
-        self.mjdCol = mjdCol
-        self.m5Col = m5Col
-        self.filterCol = filterCol
-        self.dateCol = 'expDate'
-        self.fieldRA='fieldRA'
-        self.fieldDec='fieldDec'
-        self.ditheredRA='ditheredRA'
-        self.ditheredDec='ditheredDec'
-        self.visitTime='visitExpTime'
-        self.finSeeing='finSeeing'
-        self.rawSeeing='rawSeeing'
-        self.moonPhase='moonPhase'
-        self.airmass='airmass'
-        self.filtSkyBrightness='filtSkyBrightness'
 
         """
         super(SNMetric, self).__init__(col=[self.mjdCol, self.m5Col, self.filterCol, self.dateCol,self.fieldRA,self.fieldDec, self.ditheredRA,self.ditheredDec,self.visitTime,self.finSeeing,self.rawSeeing,self.moonPhase,self.airmass,self.filtSkyBrightness],
                                               metricName=metricName, units=units, badval=badval,
                                               **kwargs)
         """
-        super(SNMetric, self).__init__(col=['night','fiveSigmaDepth','filter',self.mjdCol,'observationId','airmass','numExposures', 'visitTime', 'visitExposureTime','season','coadd'],metricName=metricName, units=units, badval=badval,**kwargs)
-        self.redshift = redshift
-        self.Tmin = Tmin
-        self.Tmax = Tmax
-        self.Nbetween = Nbetween
-        self.Nfilt = Nfilt
-        self.Nfilt_obs = Nfilt_obs
-        self.Tless = Tless
-        self.Nless = Nless
-        self.Tmore = Tmore
-        self.Nmore = Nmore
-        self.peakGap = peakGap
-        self.snrCut = snrCut
+        self.mjdCol = mjdCol
+        self.m5Col = m5Col
+        self.filterCol = filterCol
+        self.RaCol= RaCol
+        self.DecCol = DecCol
+        self.exptimeCol = exptimeCol
+        self.seasonCol = 'season'
         self.resolution = resolution
-        self.uniqueBlocks = uniqueBlocks
+        
+        super(SNMetric, self).__init__(col=['night','fiveSigmaDepth','filter',self.mjdCol,'observationId','airmass','numExposures', 'visitTime', 'visitExposureTime','season','coadd'],metricName=metricName, units=units, badval=badval,**kwargs)
+        
         self.filterNames = np.array(['u','g','r','i','z','y'])
         self.config = config
         print('hello', self.config)
@@ -98,21 +81,14 @@ class SNMetric(BaseMetric):
         simu_config = config['Simulator']
         display_lc = config['Display']
 
-        names = dict(zip(['band', 'mjd', 'rawSeeing', 'sky', 'exptime',
-                      'moonPhase', 'Ra', 'Dec', 'Nexp', 'fiveSigmaDepth',
-                      'seeing', 'airmass', 'night', 'season', 'pixarea',
-                      'pixRa', 'pixDec'],
-                     ['band', 'mjd', 'seeingFwhm500', 'sky', 'exptime',
-                      'moonPhase', 'Ra', 'Dec', 'numExposures',
-                      'fiveSigmaDepth', 'seeingFwhmEff', 'airmass',
-                      'night', 'season', 'pixarea',
-                     'pixRa', 'pixDec']))
-
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
-                             save_status, outdir, prodid,
-                             simu_config, display_lc, names=names,nproc=config['Multiprocessing']['nproc'])
-
-        
+                                  save_status, outdir, prodid,
+                                  simu_config, display_lc,9.6,
+                                  mjdCol=self.mjdCol, RaCol=self.RaCol,
+                                  DecCol= self.DecCol,  
+                                  filterCol=self.filterCol, exptimeCol=self.exptimeCol,
+                                  m5Col=self.m5Col, seasonCol=self.seasonCol,
+                                  nproc=config['Multiprocessing']['nproc'])
 
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
@@ -126,39 +102,10 @@ class SNMetric(BaseMetric):
         print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
-        #print 'time in Rest frame',len(time),time[191],time[192],time[1380],time[1381],time[1382]
-        # Creat time steps to evaluate at
-        finetime = np.arange(0.,np.ceil(np.max(time)),self.resolution)
-        #print 'finetime',finetime
-        #index for each time point
-        ind = np.arange(finetime.size)
-        #index for each time point + Tmax - Tmin
-        right = np.searchsorted( time, finetime+self.Tmax-self.Tmin, side='right')
-        left = np.searchsorted(time,finetime, side='left')
-        #print 'left and right',left,right
-        # Demand enough visits in window  
-        good = np.where( (right - left) > self.Nbetween)[0]
-        #print 'right minus left',right,left,right - left,'good',good
-        ind = ind[good]
-        right = right[good]
-        left = left[good]
-        #print 'index',ind
-        result = 0
-        # Record the maximum gap near the peak (in rest-frame days)
-        maxGap = []
-        # Record the total number of observations in a sequence.
-        Nobs = []
-        # Record the number of observations betwenn Tless and Tmore
-        Nobs_peak = []
-        outputToASCII = True
+        self.simu(dataSlice,'DD',100)
+        return {'result':0, 'maxGap':0, 'Nobs':0, 'Nobs_peak':0}
+        #return{'result': 0}
         
- 
-        maxGap = np.array(maxGap)
-        Nobs=np.array(Nobs)
-        Nobs_peak=np.array(Nobs_peak)
-        #print 'hello pal',Nobs
-        return {'result':result, 'maxGap':maxGap, 'Nobs':Nobs, 'Nobs_peak':Nobs_peak}
-
     def reduceMedianMaxGap(self,data):
         """The median maximum gap near the peak of the light curve """
         result = np.median(data['maxGap'])

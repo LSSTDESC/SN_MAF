@@ -2,7 +2,7 @@ ProductionID: Fake_Obs
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
-       type : fixed
+       type : fixed #random or fixed
        min : [0.0,0.0]
        max : [2.0,0.2]
        rate :  JLA
@@ -42,10 +42,10 @@ Simulator :
     model : salt2-extended   # spectra model
     version : 1.0                     #version
 Host Parameters: None         # Host parameters
-Display : False #display during LC simulations
+Display : True #display during LC simulations
 Output:
     directory: Output_Simu
     save: True
 Multiprocessing:
-    nproc: 4
+    nproc: 1
 Metric: SN_Metric_Simulation

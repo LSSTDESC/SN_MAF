@@ -23,7 +23,6 @@ def run(config_filename):
     # grab the db filename from yaml input file 
     dbFile=config['Observations']['filename']
 
-    """
     conn = sqlite3.connect(dbFile)
     cur = conn.cursor()
     table_name='Proposal'
@@ -39,7 +38,7 @@ def run(config_filename):
     
     names = [tup[1] for tup in cur.fetchall()]
     print(names)
-    """
+    
     #opsimdb = utils.connectOpsimDb(dbFile)
     #resultsDb = db.ResultsDb(outDir=outDir)
     opsimdb = db.OpsimDatabase(dbFile)
