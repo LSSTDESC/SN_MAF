@@ -40,6 +40,7 @@ then
     fi
 # now update python path
 echo "updating python path"
+export PYTHONPATH=${PWD}/SN_Catalog_Simulations/SN_Simulation:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNCosmo:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNSim:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNAna:$PYTHONPATH
