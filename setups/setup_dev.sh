@@ -44,6 +44,7 @@ export PYTHONPATH=${PWD}/SN_Catalog_Simulations/SN_Simulation:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNCosmo:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNSim:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNAna:$PYTHONPATH
+export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNFast:$PYTHONPATH
 
 export PYTHONPATH=${PWD}/SN_Utils/Utils:$PYTHONPATH
 export SN_UTILS_DIR=${PWD}/SN_Utils
