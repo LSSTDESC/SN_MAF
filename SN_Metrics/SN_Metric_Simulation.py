@@ -50,15 +50,16 @@ class SNMetric(BaseMetric):
         simu_config = config['Simulator']
         display_lc = config['Display_LC']['display']
         display_time = config['Display_LC']['time']
-
+        self.field_type = config['Observations']['fieldtype']
+        self.season = config['Observations']['season']
         area = 9.6 #survey_area in sqdeg - 9.6 by default for DD
-        if config['Observations']['fieldtype'] == 'WFD':
+        if  self.field_type == 'WFD':
             # in that case the survey area is the healpix area
             area = hp.nside2pixarea(config['Pixelisation']['nside'],degrees=True)
         
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
-                                  simu_config, display_lc,display_time,9.6,
+                                  simu_config, display_lc,display_time,area,
                                   mjdCol=self.mjdCol, RaCol=self.RaCol,
                                   DecCol= self.DecCol,  
                                   filterCol=self.filterCol, exptimeCol=self.exptimeCol,
@@ -74,8 +75,8 @@ class SNMetric(BaseMetric):
         if dataSlice.size == 0:
             return (self.badval, self.badval,self.badval)
         dataSlice.sort(order=self.mjdCol)
-        print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
+        #print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
-        self.simu(dataSlice,'DD',100)
+        self.simu(dataSlice,self.field_type,100,self.season)
         return None
