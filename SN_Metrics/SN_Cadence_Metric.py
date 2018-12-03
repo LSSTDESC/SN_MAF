@@ -4,7 +4,7 @@ from SN_Simulation import SN_Simulation
 from Coadd_Stacker import CoaddStacker
 import healpy as hp
 
-class SN_MAF_Simulation(BaseMetric):
+class SN_Cadence_Metric(BaseMetric):
     """
     Measure how many time series meet a given time and filter distribution requirement.
     """
@@ -29,7 +29,7 @@ class SN_MAF_Simulation(BaseMetric):
         cols = [self.nightCol,self.m5Col,self.filterCol,self.mjdCol,self.obsidCol,self.nexpCol,self.vistimeCol, self.exptimeCol,self.seasonCol]
         if coadd:
             cols+=['coadd']
-        super(SN_MAF_Simulation, self).__init__(col=cols,metricName=metricName, **kwargs)
+        super(SN_Cadence_Metric, self).__init__(col=cols,metricName=metricName, **kwargs)
         
         self.filterNames = np.array(['u','g','r','i','z','y'])
         self.config = config
