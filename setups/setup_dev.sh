@@ -8,6 +8,7 @@ setup lsst_sims
 
 export PYTHONPATH=${PWD}/SN_MAF/SN_Metrics:$PYTHONPATH
 export PYTHONPATH=${PWD}/SN_MAF/SN_Stackers:$PYTHONPATH
+export PYTHONPATH=${PWD}/SN_MAF/SN_Simulations:$PYTHONPATH
 
 thedir=${PWD}/lib/python3.6/site-packages/
 if [ ! -d ${PWD}/SN_Catalog_Simulations ]
