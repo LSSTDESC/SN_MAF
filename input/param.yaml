@@ -52,6 +52,6 @@ Output:
     save: True
 Multiprocessing:
     nproc: 4
-Metric: SN_Metric_Simulation
+Metric: SN_MAF_Simulation
 Pixelisation:
     nside: 64
