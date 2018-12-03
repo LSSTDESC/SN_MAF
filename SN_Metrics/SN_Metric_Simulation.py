@@ -75,7 +75,7 @@ class SNMetric(BaseMetric):
         if dataSlice.size == 0:
             return (self.badval, self.badval,self.badval)
         dataSlice.sort(order=self.mjdCol)
-        #print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
+        print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
         self.simu(dataSlice,self.field_type,100,self.season)
