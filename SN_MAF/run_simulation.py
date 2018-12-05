@@ -9,6 +9,7 @@ import yaml
 from importlib import import_module
 import sqlite3
 import numpy as np
+from SN_Utils import Generate_Fake_Observations
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -39,35 +40,41 @@ def run(config_filename):
     names = [tup[1] for tup in cur.fetchall()]
     print(names)
     """
-    opsimdb = db.OpsimDatabase(dbFile)
-    version = opsimdb.opsimVersion
-    propinfo, proptags = opsimdb.fetchPropInfo()
-    print('proptags and propinfo',proptags,propinfo)
-
-    # grab the fieldtype (DD or WFD) from yaml input file
-    fieldtype = config['Observations']['fieldtype']
-    
     module = import_module(config['Metric'])
+    if dbFile != 'None':
+        opsimdb = db.OpsimDatabase(dbFile)
+        version = opsimdb.opsimVersion
+        propinfo, proptags = opsimdb.fetchPropInfo()
+        print('proptags and propinfo',proptags,propinfo)
+        
+        # grab the fieldtype (DD or WFD) from yaml input file
+        fieldtype = config['Observations']['fieldtype']
+        slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
+        
+        # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
+        
+        metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'])
+        
+        sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
     
-    slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
+        mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
+        
+        mbD = {0:mb}
+        
+        resultsDb = db.ResultsDb(outDir=outDir)
+        
+        mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
+                                               outDir=outDir, resultsDb=resultsDb)
+        
+        mbg.runAll()
 
-    # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
-    
-    metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'])
-    
-    sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
-    
-    mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
-    
-    mbD = {0:mb}
+    else:
+        fake_obs = Generate_Fake_Observations(config['Param_file']).Observations
 
-    resultsDb = db.ResultsDb(outDir=outDir)
-
-    mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
-                                      outDir=outDir, resultsDb=resultsDb)
-
-    mbg.runAll()
-    
+        print(fake_obs)
+        metric=module.SNMetric(config=config)
+        metric.run(fake_obs)
+        
     #mbg.plotAll(closefigs=False)
     #plt.show()
 

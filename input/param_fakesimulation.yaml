@@ -1,19 +1,19 @@
-ProductionID: DD_baseline2018a
+ProductionID: Fake_Observation
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
-       type : random #random or fixed
-       min : [-2.0,-0.2]
+       type : fixed  #random or fixed
+       min : [-2.0,0.2]
        max : [2.0,0.2]
        rate :  JLA
    z :              # redshift
-       type : random
-       min : 0.01
-       max : 0.5
-       step: 0.05
+       type : uniform
+       min : 0.4
+       max : 0.9
+       step: 0.1
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
-       type : random #uniform or random or unique
+       type : unique #uniform or random or unique
        step : 1 # if uniform: step (in day) between Tmin(obs) and Tmax(obs)      
    min_rf_phase : -20.        # obs min phase (rest frame)
    max_rf_phase : 60.         # obs max phase (rest frame)
@@ -35,10 +35,10 @@ Instrument:
    atmos : True  #atmos
    aerosol : False  #aerosol
 Observations: 
-   filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
-   fieldtype: WFD #DD or WFD
-   coadd: False # this is the coaddition per night
-   season: 3 #season to simulate (-1 = all seasons)
+   filename: None  # Name of db obs file (full path)
+   fieldtype: None #DD or WFD
+   coadd: None # this is the coaddition per night
+   season: 0 #season to simulate (-1 = all seasons)
 Simulator :
     name : SN_Cosmo           # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
@@ -51,7 +51,6 @@ Output:
     directory: Output_Simu
     save: True
 Multiprocessing:
-    nproc: 4
-Metric: SN_MAF_Simulation
-Pixelisation:
-    nside: 64
+    nproc: 1
+Metric: SN_MAF_FakeSimulation
+Param_file: SN_MAF/input/Fake_cadence.yaml

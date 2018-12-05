@@ -4,15 +4,13 @@ from SN_Simulation import SN_Simulation
 from Coadd_Stacker import CoaddStacker
 import healpy as hp
 
-class SNMetric(BaseMetric):
+class SNMetric:
     """
     Measure how many time series meet a given time and filter distribution requirement.
     """
-    def __init__(self, metricName='SNMetric',
-                 mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',
+    def __init__(self, mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth',exptimeCol='visitExposureTime',
-                 nightCol='night',obsidCol='observationId',nexpCol='numExposures',vistimeCol='visitTime',coadd=True,
-                 uniqueBlocks=False, config=None,**kwargs):
+                 nightCol='night',obsidCol='observationId',nexpCol='numExposures',vistimeCol='visitTime',config=None):
     
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -26,12 +24,6 @@ class SNMetric(BaseMetric):
         self.nexpCol = nexpCol
         self.vistimeCol = vistimeCol
         
-        cols = [self.nightCol,self.m5Col,self.filterCol,self.mjdCol,self.obsidCol,self.nexpCol,self.vistimeCol, self.exptimeCol,self.seasonCol]
-        if coadd:
-            cols+=['coadd']
-        super(SNMetric, self).__init__(col=cols,metricName=metricName, **kwargs)
-        
-        self.filterNames = np.array(['u','g','r','i','z','y'])
         self.config = config
 
         # load cosmology
@@ -53,9 +45,6 @@ class SNMetric(BaseMetric):
         self.field_type = config['Observations']['fieldtype']
         self.season = config['Observations']['season']
         area = 9.6 #survey_area in sqdeg - 9.6 by default for DD
-        if  self.field_type == 'WFD':
-            # in that case the survey area is the healpix area
-            area = hp.nside2pixarea(config['Pixelisation']['nside'],degrees=True)
         
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
@@ -66,17 +55,12 @@ class SNMetric(BaseMetric):
                                   m5Col=self.m5Col, seasonCol=self.seasonCol,
                                   nproc=config['Multiprocessing']['nproc'])
 
-    def run(self, dataSlice, slicePoint=None):
+    def run(self, dataSlice):
         # Cut down to only include filters in correct wave range.
         
-        #print("attention",type(dataSlice),dataSlice.dtype)
-        goodFilters = np.in1d(dataSlice['filter'],self.filterNames)
-        dataSlice = dataSlice[goodFilters]
-        if dataSlice.size == 0:
-            return (self.badval, self.badval,self.badval)
         dataSlice.sort(order=self.mjdCol)
         print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
-
+        print(dataSlice,time)
         self.simu(dataSlice,self.field_type,100,self.season)
         return None
