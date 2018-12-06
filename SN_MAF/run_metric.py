@@ -22,14 +22,28 @@ def Lims(band, tab,SNR):
     print(tab.dtype)
     for z in np.unique(tab['z']):
         lims[z] = {}
-        idx = tab['z'] == z
+        idx = (tab['z'] == z)&(tab['band']=='LSST::'+band)
         sel = tab[idx]
-        Li2 = np.sqrt(np.sum(sel['Li_'+band]**2))                                                               
-        lim = 5. * Li2 / SNR
-        lims[z][band]  = lim
+        if len(sel) > 0:
+            Li2 = np.sqrt(np.sum(sel['flux_e']**2))                                                               
+            lim = 5. * Li2 / SNR
+            lims[z][band]  = lim
 
+    print('lims',lims)
     return lims
-    
+
+def Mesh(band, mag_to_flux,dt_range, mag_range,):
+    dt = np.linspace(dt_range[0], dt_range[1], 50)
+    m5 = np.linspace(mag_range[0], mag_range[1], 50)
+    ida = mag_to_flux['band'] == band
+    fa = interpolate.interp1d(mag_to_flux[ida]['m5'],mag_to_flux[ida]['flux'])
+    f5 = fa(m5)
+    F5,DT = np.meshgrid(f5, dt)
+    M5,DT = np.meshgrid(m5, dt)
+    metric = np.sqrt(DT) * F5
+
+    return M5, DT, metric
+
 def Plot(band,metricValues, Li, mag_to_flux,
          mag_range=(23., 27.5),dt_range=(0.5, 15.),
          target={# 'g': (26.91, 3.), # was 25.37                                            
@@ -37,40 +51,49 @@ def Plot(band,metricValues, Li, mag_to_flux,
                            'i': (26.16, 3.), # was 25.37      # could be 25.3 (400-s)                 
                            'z': (25.56, 3.), # was 24.68      # could be 25.1 (1000-s)                
                            'y': (24.68, 3.) },# was 24.72
-         SNR=dict(zip([b for b in 'rizy'],                                             
+         SNR=dict(zip([b for b in 'grizy'],                                             
                                 [25., 25., 60., 35., 20.]))) :
 
-    lims = Lims(band, Li, SNR[band])
-    dt = np.linspace(dt_range[0], dt_range[1], 50)
-    m5 = np.linspace(mag_range[0], mag_range[1], 50)
-    #b = [band] * len(m5)
-    #f5 = lsstpg.mag_to_flux(m5, b)
-    ida = mag_to_flux['band'] == band
-    #print(mag_to_flux.dtype,mag_to_flux['band'],str(band))
-    #print(mag_to_flux[ida]['m5'],mag_to_flux[ida]['flux'])
-    fa = interpolate.interp1d(mag_to_flux[ida]['m5'],mag_to_flux[ida]['flux'])
-    f5 = fa(m5)
-    F5,DT = np.meshgrid(f5, dt)
-    M5,DT = np.meshgrid(m5, dt)
-    metric = np.sqrt(DT) * F5                                                                                 
-                                                                                                              
-    sorted_keys=np.sort([k  for  k in  lims.keys()])[::-1]
+    lims = []
+    mags_to_fluxes = []
+    M5_all = []
+    DT_all = []
+    metric_all = []
+    
+    for val in Li:
+        lims.append(Lims(band, val, SNR[band]))
+        
+    for val in mag_to_flux:
+        M5, DT, metric = Mesh(band, val,dt_range,mag_range)
+        M5_all.append(M5)
+        DT_all.append(DT)
+        metric_all.append(metric)
+
+    sorted_keys= []
+    for i in range(len(lims)):
+        sorted_keys.append(np.sort([k  for  k in  lims[i].keys()])[::-1])
+        
     plt.figure()                                                                                               
     plt.imshow(metric, extent=(mag_range[0], mag_range[1],dt_range[0], dt_range[1]), aspect='auto', alpha=0.25)
     print(type(metricValues), len(np.copy(metricValues)),len(metricValues[~metricValues.mask]))
     for vval in metricValues:
             plt.plot(vval['m5_mean'],vval['cadence_mean'],'r+',alpha = 0.1)
-    
-    if lims is not None:
+
+    color = ['k','b']
+    for kk,lim in enumerate(lims):
         fmt = {}                                                                                              
-        ll = [lims[zz][band] for zz in sorted_keys]
-        cs = plt.contour(M5, DT, metric, ll, colors='k')                                                       
+        ll = [lim[zz][band] for zz in sorted_keys[kk]]
+        cs = plt.contour(M5_all[kk], DT_all[kk], metric_all[kk], ll, colors=color[kk])                                                       
         #dict_target_snsim=Get_target(cs,sorted_keys,cadence_ref,m5_exp)
-        strs = ['$z=%3.1f$' % zz for zz in sorted_keys]
+        print('cs',cs.collections)
+        for io,col in enumerate(cs.collections):
+            print('col',sorted_keys[kk][io],col.get_segments())
+        strs = ['$z=%3.1f$' % zz for zz in sorted_keys[kk]]
         for l,s in zip(cs.levels, strs):
             fmt[l] = s
         plt.clabel(cs, inline=True, fmt=fmt, fontsize=16, use_clabeltext=True)
 
+        
     t = target.get(band, None)
     print(target, t)
     if t is not None:
@@ -130,7 +153,7 @@ def run(config_filename):
     bundles = []
     #for band in 'grizy':
     names = []
-    bands = 'griz'
+    bands = 'r'
     for band in bands:
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
@@ -163,8 +186,12 @@ def run(config_filename):
     result = mbg.runAll()
 
     #for the plot, two files to be loaded
-    Li = np.load(config['Li file'])
-    mag_to_flux = np.load(config['Mag_to_flux file'])
+    Li = []
+    mag_to_flux = []
+    for val in config['Li file']:
+        Li.append(np.load(val))
+    for val in config['Mag_to_flux file']:
+        mag_to_flux.append(np.load(val))
     SNR = dict(zip(bands,[25]))
     for band, val in bdict.items():
         Plot(band,val.metricValues[~val.metricValues.mask],Li,mag_to_flux)
