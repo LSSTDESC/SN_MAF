@@ -10,6 +10,8 @@ from importlib import import_module
 import sqlite3
 import numpy as np
 from scipy import interpolate
+import numpy.lib.recfunctions as rf
+from scipy import interpolate
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -86,13 +88,30 @@ def Plot(band,metricValues, Li, mag_to_flux,
         cs = plt.contour(M5_all[kk], DT_all[kk], metric_all[kk], ll, colors=color[kk])                                                       
         #dict_target_snsim=Get_target(cs,sorted_keys,cadence_ref,m5_exp)
         print('cs',cs.collections)
+        restot = None
         for io,col in enumerate(cs.collections):
-            print('col',sorted_keys[kk][io],col.get_segments())
+            if col.get_segments():
+                print(col.get_segments())
+                myarray = col.get_segments()[0]
+                print('ooo',myarray[:,0])
+                res = np.array(myarray[:,0],dtype = [('m5','f8')])
+                print('rr',res)
+                res = rf.append_fields(res,'cadence',myarray[:,1])
+                res = rf.append_fields(res,'z',[sorted_keys[kk][io]]*len(res))
+                print('res',res)
+                print('col',sorted_keys[kk][io],type(col.get_segments()),np.asarray(col.get_segments()))
+                if restot is None:
+                    restot = res
+                else:
+                    restot = np.concatenate((restot,res))
         strs = ['$z=%3.1f$' % zz for zz in sorted_keys[kk]]
         for l,s in zip(cs.levels, strs):
             fmt[l] = s
         plt.clabel(cs, inline=True, fmt=fmt, fontsize=16, use_clabeltext=True)
 
+        print(restot)
+        f = interpolate.interp2d(restot['m5'], restot['cadence'], restot['z'], kind='cubic')
+        print('interp',f(26.5,3.0))
         
     t = target.get(band, None)
     print(target, t)
