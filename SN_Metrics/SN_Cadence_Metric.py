@@ -2,6 +2,7 @@ import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
 from Coadd_Stacker import CoaddStacker
 import healpy as hp
+import numpy.lib.recfunctions as rf
 
 class SNMetric(BaseMetric):
     """
@@ -10,7 +11,8 @@ class SNMetric(BaseMetric):
     def __init__(self, metricName='SNMetric',
                  mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth',exptimeCol='visitExposureTime',
-                 nightCol='night',obsidCol='observationId',nexpCol='numExposures',vistimeCol='visitTime',coadd=True,
+                 nightCol='night',obsidCol='observationId',nexpCol='numExposures',
+                 vistimeCol='visitTime',coadd=True,lim_sn = None,names_ref = None,
                  uniqueBlocks=False, config=None,**kwargs):
     
         self.mjdCol = mjdCol
@@ -53,6 +55,10 @@ class SNMetric(BaseMetric):
         # Load the reference Li file
 
         #self.Li = np.load(config['Reference File'])
+        self.lim_sn = lim_sn
+        self.names_ref = names_ref
+        self.mag_range =config['Observations']['mag_range']
+        self.dt_range = config['Observations']['dt_range']
 
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
@@ -83,4 +89,15 @@ class SNMetric(BaseMetric):
             r.append((fieldRA,fieldDec,season, band, np.mean(sel[self.m5Col]),cadence))
         #print(self.Li)
     
-        return np.rec.fromrecords(r, names = ['fieldRA','fieldDec','season','band','m5_mean','cadence_mean'])
+        res = np.rec.fromrecords(r, names = ['fieldRA','fieldDec','season','band','m5_mean','cadence_mean'])
+
+        idx = (res['m5_mean'] >= self.mag_range[0])&(res['m5_mean'] <= self.mag_range[1])
+        idx &= (res['cadence_mean'] >= self.dt_range[0])&(res['cadence_mean'] <= self.dt_range[1])
+        res = res[idx]
+        if self.lim_sn is not None:
+            for io,interp in enumerate(self.names_ref):
+                #zlims = [interp(xi, yi)[0] for xi, yi in zip(res['m5_mean'],res['cadence_mean'])]
+                zlims = self.lim_sn.Interp_griddata(io, res)
+                res = rf.append_fields(res, 'zlim_'+self.names_ref[io],zlims)
+
+        return res

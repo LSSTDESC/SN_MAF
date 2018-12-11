@@ -1,0 +1,8 @@
+import numpy as np
+
+class Lims:
+    def __init__(self, band, SNR):
+
+        self.band = band
+        self.SNR = SNR
+        
