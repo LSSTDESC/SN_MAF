@@ -4,17 +4,12 @@ SN parameters:
    Color: 0.2   #color
 Observations: 
    filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
-   fieldtype: WFD #DD or WFD
-   coadd: False # this is the coaddition per night
+   fieldtype: DD #DD or WFD
+   coadd: True # this is the coaddition per night
    season: -1 #season to simulate (-1 = all seasons)
    #bands: 'riz' #bands to consider
-   bands: 'griz'
-   #SNR: [25., 25., 30., 35.] #DDF SNR cut to estimate sum(Li**2)
-   SNR:  [30., 40., 30., 20.]#WFD SNR cut to estimate sum(Li**2)
-   #mag_range: [23., 27.5] #DDF mag range
-   mag_range: [21., 25.5] #WFD mag range
-   #dt_range: [0.5, 25.] # DDF dt range
-   dt_range: [0.5, 30.]  # WFD dt range
+   bands: 'r'
+   z: 0.6
 Pixelisation:
     nside: 64
 #Li file : ['SN_MAF/Reference_Files/Li_SNSim_-2.0_0.2.npy']

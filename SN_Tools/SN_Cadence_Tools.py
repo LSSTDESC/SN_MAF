@@ -184,8 +184,6 @@ class Lims:
             label.append(name + '  $z_{med}$ = '+ str(np.median(np.round(restot['zlim_'+name],2))))
             ax.hist(restot['zlim_'+name],range=[xmin,xmax],bins=bins,histtype='step',color=colors[j],linewidth = 2)
             
-        
-            
         ax.set_xlabel('$z_{lim}$', fontsize=fontsize)
         ax.set_ylabel(r'Number of Entries', fontsize=fontsize)
         #ax.set_xticks(np.arange(0.5,0.75,0.05))
@@ -193,3 +191,27 @@ class Lims:
         ax.grid()
         plt.legend(label, fontsize = fontsize-2.,loc = 'upper left')
         #plt.grid(1)
+
+class Reference_Data:
+    def __init__(self,Li_files, mag_to_flux_files,band,z):
+
+        self.band = band
+        self.z = z
+        self.fluxes = []
+        self.mag_to_flux = []
+        
+        for val in Li_files:
+            self.fluxes.append(self.Get_Fluxes(self.band, np.load(val), self.z))
+        for val in mag_to_flux_files:
+            self.mag_to_flux.append(np.load(val))
+
+    def Get_Fluxes(self,band, tab,z):
+
+        lims = {}
+        #print(tab.dtype)
+        idx = (tab['z'] == z)&(tab['band']=='LSST::'+band)
+        sel = tab[idx]
+        print(sel.dtype)
+        #print(sel['time']-sel['DayMax'])
+        phases = (sel['time']-sel['DayMax'])/(1.+sel['z'])
+        print(phases)

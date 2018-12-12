@@ -12,7 +12,7 @@ import numpy as np
 #from scipy import interpolate
 #import numpy.lib.recfunctions as rf
 #from scipy import interpolate
-from SN_Cadence_Tools import Lims
+from SN_Cadence_Tools import Reference_Data
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -62,45 +62,37 @@ def run(config_filename):
     bundles = []
     names = []
     lim_sn = {}
-    SNR = dict(zip(config['Observations']['bands'],config['Observations']['SNR']))
-    mag_range = config['Observations']['mag_range']
-    dt_range = config['Observations']['dt_range']
-    for band in SNR.keys():
+    bands  = config['Observations']['bands']
+    z = config['Observations']['z']
+    for band in bands:
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
         #sql_i += ' AND '
         #sql_i +=  'season= "%s"' % (season)
-        lim_sn[band]= Lims(config['Li file'],config['Mag_to_flux file'],band,SNR[band],mag_range=mag_range,dt_range=dt_range)
+        lim_sn[band]= Reference_Data(config['Li file'],config['Mag_to_flux file'],band,z)
+    """
         metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'], lim_sn = lim_sn[band],names_ref=config['names_ref'])
         bundles.append(metricBundles.MetricBundle(metric, slicer, sql_i))
         names.append(band)
        
         print('sql',sql_i)
-
+    """
+    """     
     print('hello',len(bundles))
     bdict = dict(zip(names,bundles))
-    """
-    mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
-    
-    mbD = {0:mb}
-
-    resultsDb = db.ResultsDb(outDir='None')
-    
-    mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
-                                      outDir=outDir, resultsDb=resultsDb)
-
-    """
+   
     resultsDb = db.ResultsDb(outDir='None')
     mbg =  metricBundles.MetricBundleGroup(bdict, opsimdb,
                                       outDir=outDir, resultsDb=resultsDb)
     
     result = mbg.runAll()
-
+    """
     # Let us display the results
+    """
     for band, val in bdict.items():
         lim_sn[band].Plot_Cadence_Metric(val.metricValues[~val.metricValues.mask])
         lim_sn[band].Plot_Hist_zlim(config['names_ref'],val.metricValues[~val.metricValues.mask])
-        
+    """
     #mbg.writeAll()
     #mbg.plotAll(closefigs=False)
     #mbg.plot()
