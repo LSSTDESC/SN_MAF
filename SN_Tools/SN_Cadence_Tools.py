@@ -24,17 +24,19 @@ class Lims:
     def Get_Lims(self,band, tab,SNR):
 
         lims = {}
-        print(tab.dtype)
+        #print(tab.dtype)
         for z in np.unique(tab['z']):
-            lims[z] = {}
+            #lims[z] = {}
             idx = (tab['z'] == z)&(tab['band']=='LSST::'+band)
             sel = tab[idx]
             if len(sel) > 0:
                 Li2 = np.sqrt(np.sum(sel['flux_e']**2))                                                               
                 lim = 5. * Li2 / SNR
+                if z not in lims.keys():
+                    lims[z] = {}
                 lims[z][band]  = lim
 
-        print('lims',lims)
+        #print('lims',lims)
         return lims
 
 
@@ -74,7 +76,7 @@ class Lims:
             points_values = None
             for io,col in enumerate(cs.collections):
                 if col.get_segments():
-                    print(sorted_keys[kk][io],'segment',col.get_segments())
+                    #print(sorted_keys[kk][io],'segment',col.get_segments())
                     myarray = col.get_segments()[0]
                     res = np.array(myarray[:,0],dtype = [('m5','f8')])
                     res = rf.append_fields(res,'cadence',myarray[:,1])
@@ -122,8 +124,10 @@ class Lims:
         plt.figure()                                                                                               
         plt.imshow(metric, extent=(self.mag_range[0], self.mag_range[1],self.dt_range[0], self.dt_range[1]), aspect='auto', alpha=0.25)
         print(type(metricValues), len(np.copy(metricValues)),len(metricValues[~metricValues.mask]))
-        for vval in metricValues:
-            plt.plot(vval['m5_mean'],vval['cadence_mean'],'r+',alpha = 0.1)
+        restot = np.concatenate(metricValues)
+        restot = np.unique(restot)
+        #for vval in metricValues:
+        plt.plot(restot['m5_mean'],restot['cadence_mean'],'r+',alpha = 0.9)
 
         color = ['k','b']
         for kk,lim in enumerate(self.lims):
@@ -152,12 +156,14 @@ class Lims:
         fontsize = 15
         restot = None
         colors = dict(zip(range(0,4),['r','k','b','g']))
+        """
         for vval in metricValues:
             if restot is None:
                 restot = np.copy(vval)
             else:
                     restot = np.concatenate((restot,np.copy(vval)))
-                    
+         """
+        restot = np.concatenate(metricValues)
         restot = np.unique(restot)
         fig,ax = plt.subplots(figsize=(8,6))
         fig.suptitle(self.band +' band',fontsize=fontsize)
@@ -173,7 +179,7 @@ class Lims:
         xstep = 0.025
         bins = np.arange(xmin, xmax+xstep, xstep)
 
-        print(restot[['band','m5_mean','cadence_mean','zlim_SNSim']])
+        #print(restot[['band','m5_mean','cadence_mean','zlim_SNSim']])
         for j,name in enumerate(names_ref):
             label.append(name + '  $z_{med}$ = '+ str(np.median(np.round(restot['zlim_'+name],2))))
             ax.hist(restot['zlim_'+name],range=[xmin,xmax],bins=bins,histtype='step',color=colors[j],linewidth = 2)

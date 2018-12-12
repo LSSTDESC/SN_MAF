@@ -8,7 +8,7 @@ SN parameters:
        rate :  JLA
    z :              # redshift
        type : uniform
-       min : 0.4
+       min : 0.1
        max : 0.9
        step: 0.1
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.

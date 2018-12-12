@@ -69,7 +69,7 @@ class SNMetric(BaseMetric):
         if dataSlice.size == 0:
             return None
         dataSlice.sort(order=self.mjdCol)
-        print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season']]),dataSlice.dtype)
+        #print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season','filter']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
         r = []
         fieldRA = np.mean(dataSlice[self.RaCol])
@@ -90,14 +90,19 @@ class SNMetric(BaseMetric):
         #print(self.Li)
     
         res = np.rec.fromrecords(r, names = ['fieldRA','fieldDec','season','band','m5_mean','cadence_mean'])
-
+        
         idx = (res['m5_mean'] >= self.mag_range[0])&(res['m5_mean'] <= self.mag_range[1])
         idx &= (res['cadence_mean'] >= self.dt_range[0])&(res['cadence_mean'] <= self.dt_range[1])
         res = res[idx]
-        if self.lim_sn is not None:
-            for io,interp in enumerate(self.names_ref):
-                #zlims = [interp(xi, yi)[0] for xi, yi in zip(res['m5_mean'],res['cadence_mean'])]
-                zlims = self.lim_sn.Interp_griddata(io, res)
-                res = rf.append_fields(res, 'zlim_'+self.names_ref[io],zlims)
+        #print(len(res))
+        if len(res) > 0:
+            if self.lim_sn is not None:
+                for io,interp in enumerate(self.names_ref):
+                    #zlims = [interp(xi, yi)[0] for xi, yi in zip(res['m5_mean'],res['cadence_mean'])]
+                    zlims = self.lim_sn.Interp_griddata(io, res)
+                    #print('interp',type(zlims))
+                    zlims[np.isnan(zlims)]=-1
+                    #print(io,zlims)
+                    res = rf.append_fields(res, 'zlim_'+self.names_ref[io],zlims)
 
         return res
