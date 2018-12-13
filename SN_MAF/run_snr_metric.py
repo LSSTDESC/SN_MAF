@@ -13,6 +13,7 @@ import numpy as np
 #import numpy.lib.recfunctions as rf
 #from scipy import interpolate
 from SN_Cadence_Tools import Reference_Data
+from SN_Utils import Generate_Fake_Observations
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -64,20 +65,20 @@ def run(config_filename):
     lim_sn = {}
     bands  = config['Observations']['bands']
     z = config['Observations']['z']
+    metric ={}
     for band in bands:
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
         #sql_i += ' AND '
         #sql_i +=  'season= "%s"' % (season)
         lim_sn[band]= Reference_Data(config['Li file'],config['Mag_to_flux file'],band,z)
-    """
-        metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'], lim_sn = lim_sn[band],names_ref=config['names_ref'])
-        bundles.append(metricBundles.MetricBundle(metric, slicer, sql_i))
+        
+        metric[band]=module.SNMetric(config=config,coadd=config['Observations']['coadd'], lim_sn = lim_sn[band],names_ref=config['names_ref'])
+        bundles.append(metricBundles.MetricBundle(metric[band], slicer, sql_i))
         names.append(band)
        
         print('sql',sql_i)
-    """
-    """     
+    
     print('hello',len(bundles))
     bdict = dict(zip(names,bundles))
    
@@ -86,7 +87,23 @@ def run(config_filename):
                                       outDir=outDir, resultsDb=resultsDb)
     
     result = mbg.runAll()
-    """
+
+    config_fake = yaml.load(open(config['Fake_file']))
+    fake_obs = Generate_Fake_Observations(config_fake).Observations
+    print(config_fake)
+    print(fake_obs.dtype)
+    for band, val in bdict.items():
+        res = np.concatenate(val.metricValues[~val.metricValues.mask])
+        for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
+            idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
+            sel = res[idx]
+            cadence = np.mean(sel['Cadence'])
+            config_fake['Cadence'][config_fake['bands'].index(band)] = cadence
+            fake_obs = Generate_Fake_Observations(config_fake).Observations
+            resb = metric[band].run(fake_obs[fake_obs['filter']==band])
+            print(sel)
+            print(resb)
+    
     # Let us display the results
     """
     for band, val in bdict.items():

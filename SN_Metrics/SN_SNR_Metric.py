@@ -6,7 +6,7 @@ import numpy.lib.recfunctions as rf
 
 class SNMetric(BaseMetric):
     """
-    Measure how many time series meet a given time and filter distribution requirement.
+    Measure SN-SNR as a function of time.
     """
     def __init__(self, metricName='SNMetric',
                  mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',
@@ -57,8 +57,6 @@ class SNMetric(BaseMetric):
         #self.Li = np.load(config['Reference File'])
         self.lim_sn = lim_sn
         self.names_ref = names_ref
-        self.mag_range =config['Observations']['mag_range']
-        self.dt_range = config['Observations']['dt_range']
 
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
@@ -72,37 +70,62 @@ class SNMetric(BaseMetric):
         #print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season','filter']]),dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
         r = []
-        fieldRA = np.mean(dataSlice[self.RaCol])
-        fieldDec =  np.mean(dataSlice[self.DecCol])
-        band  = np.unique(dataSlice[self.filterCol])[0]
-        #for season  in np.unique(dataSlice[self.seasonCol]):
+        shift = 10 # SN DayMax: current date - shift days
         seasons = [self.season]
+       
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
         for season in seasons:
-            idx = dataSlice[self.seasonCol] == season
-            sel = dataSlice[idx]
-            bins = np.arange(np.floor(sel[self.mjdCol].min()), np.ceil(sel[self.mjdCol].max()), 1.)
-            c,b = np.histogram(sel[self.mjdCol], bins=bins)
-            cadence = 1. / c.mean()
-            #time_diff = sel[self.mjdCol][1:]-sel[self.mjdCol][:-1]
-            r.append((fieldRA,fieldDec,season, band, np.mean(sel[self.m5Col]),cadence))
-        #print(self.Li)
-    
-        res = np.rec.fromrecords(r, names = ['fieldRA','fieldDec','season','band','m5_mean','cadence_mean'])
-        
-        idx = (res['m5_mean'] >= self.mag_range[0])&(res['m5_mean'] <= self.mag_range[1])
-        idx &= (res['cadence_mean'] >= self.dt_range[0])&(res['cadence_mean'] <= self.dt_range[1])
-        res = res[idx]
-        #print(len(res))
-        if len(res) > 0:
-            if self.lim_sn is not None:
-                for io,interp in enumerate(self.names_ref):
-                    #zlims = [interp(xi, yi)[0] for xi, yi in zip(res['m5_mean'],res['cadence_mean'])]
-                    zlims = self.lim_sn.Interp_griddata(io, res)
-                    #print('interp',type(zlims))
-                    zlims[np.isnan(zlims)]=-1
-                    #print(io,zlims)
-                    res = rf.append_fields(res, 'zlim_'+self.names_ref[io],zlims)
+            r.append(self.Ana_Season(dataSlice,season,shift))
 
+        """
+        import pylab as plt
+        res = np.concatenate(r)
+        for season in np.unique(res['season']):
+            ii = res['season']==season
+            sel = res[ii]
+            plt.plot(sel['MJD'],sel['SNR_SNSim'],color = 'b')
+            plt.plot(sel['MJD'],sel['SNR_SNCosmo'],color = 'r')
+        plt.show()
+        """                         
+        return np.concatenate(r)
+
+    def Ana_Season(self,dataSlice,season,shift):
+        names = ['fieldRA','fieldDec','season','band']
+        idx = dataSlice[self.seasonCol] == season
+        sel = dataSlice[idx]
+        fieldRA = np.mean(sel[self.RaCol])
+        fieldDec =  np.mean(sel[self.DecCol])
+        band  = np.unique(sel[self.filterCol])[0]
+        
+        sel.sort(order = self.mjdCol)
+        mjd_min = np.min(sel[self.mjdCol])
+        mjd_max = np.max(sel[self.mjdCol])
+        dates = np.arange(mjd_min, mjd_max+1., 1.)
+        diff_time = dates[:,np.newaxis]-sel[self.mjdCol]
+        cadence = np.mean(sel[self.mjdCol][1:]-sel[self.mjdCol][:-1])
+        idx = diff_time >=0
+        r=[]
+        for io,id in enumerate(idx):
+            T0 = dates[io]-shift
+            ro = []
+            if T0 > mjd_min:
+                ro += [fieldRA,fieldDec,season,band]
+                ro+=[dates[io],T0,cadence]
+                if 'MJD' not in names:
+                    names+=['MJD','DayMax','Cadence']
+                for ib,interp in enumerate(self.names_ref):
+                    fluxes = self.lim_sn.fluxes[ib](T0-sel[self.mjdCol][id])
+                    flux_5sigma = self.lim_sn.mag_to_flux[ib](sel[self.m5Col][id])
+                    #print(fluxes,flux_5sigma)
+                    snr = np.sum(fluxes**2/flux_5sigma**2)
+                    snr = 5.*np.sqrt(snr)
+                        
+                    ro.append(snr)
+                    if 'SNR_'+self.names_ref[ib] not in names:
+                        names.append('SNR_'+self.names_ref[ib])
+            if ro:
+                r.append(tuple(ro))
+       
+        res = np.rec.fromrecords(r,names = names)
         return res

@@ -28,7 +28,9 @@ class Lims:
         for z in np.unique(tab['z']):
             #lims[z] = {}
             idx = (tab['z'] == z)&(tab['band']=='LSST::'+band)
+            idx &= (tab['flux_e'] >0.)
             sel = tab[idx]
+            
             if len(sel) > 0:
                 Li2 = np.sqrt(np.sum(sel['flux_e']**2))                                                               
                 lim = 5. * Li2 / SNR
@@ -201,17 +203,22 @@ class Reference_Data:
         self.mag_to_flux = []
         
         for val in Li_files:
-            self.fluxes.append(self.Get_Fluxes(self.band, np.load(val), self.z))
+            self.fluxes.append(self.Get_Interp_Fluxes(self.band, np.load(val), self.z))
         for val in mag_to_flux_files:
-            self.mag_to_flux.append(np.load(val))
+            self.mag_to_flux.append(self.Get_Interp_mag(self.band,np.load(val)))
 
-    def Get_Fluxes(self,band, tab,z):
+    def Get_Interp_Fluxes(self,band, tab,z):
 
         lims = {}
-        #print(tab.dtype)
-        idx = (tab['z'] == z)&(tab['band']=='LSST::'+band)
+        idx = (np.abs(tab['z'] -z)<1.e-5)&(tab['band']=='LSST::'+band)
         sel = tab[idx]
-        print(sel.dtype)
-        #print(sel['time']-sel['DayMax'])
-        phases = (sel['time']-sel['DayMax'])/(1.+sel['z'])
-        print(phases)
+        selc= np.copy(sel)
+        difftime = (sel['time']-sel['DayMax'])
+        selc = rf.append_fields(selc,'deltaT',difftime)
+        return interpolate.interp1d(selc['deltaT'],selc['flux_e'],bounds_error = False, fill_value = 0.)
+
+    def Get_Interp_mag(self,band,tab):
+        print(tab.dtype)
+        idx = tab['band']==band
+        sel = tab[idx]
+        return interpolate.interp1d(sel['m5'],sel['flux_e'],bounds_error = False, fill_value = 0.)

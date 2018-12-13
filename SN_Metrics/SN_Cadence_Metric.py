@@ -6,7 +6,7 @@ import numpy.lib.recfunctions as rf
 
 class SNMetric(BaseMetric):
     """
-    Measure how many time series meet a given time and filter distribution requirement.
+    Measure mean m5, cadence and zlimit for SN
     """
     def __init__(self, metricName='SNMetric',
                  mjdCol='observationStartMJD', RaCol='fieldRA',DecCol='fieldDec',

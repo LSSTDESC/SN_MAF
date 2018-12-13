@@ -8,8 +8,8 @@ Observations:
    coadd: True # this is the coaddition per night
    season: -1 #season to simulate (-1 = all seasons)
    #bands: 'riz' #bands to consider
-   bands: 'r'
-   z: 0.6
+   bands: 'i'
+   z: 0.7
 Pixelisation:
     nside: 64
 #Li file : ['SN_MAF/Reference_Files/Li_SNSim_-2.0_0.2.npy']
@@ -21,4 +21,5 @@ Pixelisation:
 Li file : ['SN_MAF/Reference_Files/Li_SNSim_-2.0_0.2.npy','SN_MAF/Reference_Files/Li_SNCosmo_-2.0_0.2.npy']
 Mag_to_flux file : ['SN_MAF/Reference_Files/Mag_to_Flux_SNSim.npy','SN_MAF/Reference_Files/Mag_to_Flux_SNCosmo.npy']
 names_ref: ['SNSim','SNCosmo']
-Metric: SN_Cadence_Metric
+Metric: SN_SNR_Metric
+Fake_file: SN_MAF/input/Fake_cadence.yaml

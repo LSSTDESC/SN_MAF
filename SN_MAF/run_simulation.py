@@ -69,7 +69,8 @@ def run(config_filename):
         mbg.runAll()
 
     else:
-        fake_obs = Generate_Fake_Observations(config['Param_file']).Observations
+        config_fake = yaml.load(open(config['Param_file']))
+        fake_obs = Generate_Fake_Observations(config_fake).Observations
 
         print(fake_obs)
         metric=module.SNMetric(config=config)
