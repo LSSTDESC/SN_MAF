@@ -91,7 +91,7 @@ class SNMetric(BaseMetric):
         return np.concatenate(r)
 
     def Ana_Season(self,dataSlice,season,shift):
-        names = ['fieldRA','fieldDec','season','band']
+        names = ['fieldRA','fieldDec','season','band','MJD_min','season_length']
         idx = dataSlice[self.seasonCol] == season
         sel = dataSlice[idx]
         fieldRA = np.mean(sel[self.RaCol])
@@ -110,7 +110,7 @@ class SNMetric(BaseMetric):
             T0 = dates[io]-shift
             ro = []
             if T0 > mjd_min:
-                ro += [fieldRA,fieldDec,season,band]
+                ro += [fieldRA,fieldDec,season,band,mjd_min,mjd_max-mjd_min]
                 ro+=[dates[io],T0,cadence]
                 if 'MJD' not in names:
                     names+=['MJD','DayMax','Cadence']

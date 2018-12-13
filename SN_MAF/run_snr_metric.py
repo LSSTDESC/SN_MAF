@@ -89,20 +89,28 @@ def run(config_filename):
     result = mbg.runAll()
 
     config_fake = yaml.load(open(config['Fake_file']))
-    fake_obs = Generate_Fake_Observations(config_fake).Observations
+    #fake_obs = Generate_Fake_Observations(config_fake).Observations
     print(config_fake)
-    print(fake_obs.dtype)
+    #print(fake_obs.dtype)
     for band, val in bdict.items():
         res = np.concatenate(val.metricValues[~val.metricValues.mask])
         for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
             idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
             sel = res[idx]
             cadence = np.mean(sel['Cadence'])
+            mjd_min = np.mean(sel['MJD_min'])
+            season_length = np.mean(sel['season_length'])
             config_fake['Cadence'][config_fake['bands'].index(band)] = cadence
+            config_fake['MJD_min'] = mjd_min
+            config_fake['season_length'] = season_length
             fake_obs = Generate_Fake_Observations(config_fake).Observations
             resb = metric[band].run(fake_obs[fake_obs['filter']==band])
+            sel.sort(order='MJD')
             print(sel)
             print(resb)
+            plt.plot(sel['MJD'],sel['SNR_SNSim'])
+            plt.plot(resb['MJD'],resb['SNR_SNSim'])
+            plt.show()
     
     # Let us display the results
     """
