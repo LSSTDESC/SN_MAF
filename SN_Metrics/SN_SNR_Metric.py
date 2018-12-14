@@ -72,7 +72,10 @@ class SNMetric(BaseMetric):
         r = []
         shift = 10 # SN DayMax: current date - shift days
         seasons = [self.season]
-       
+        self.max_rf_phase = -20
+        self.min_rf_phase = 40
+        #print(self.config)
+        self.margin = (1.+self.config['Observations']['z']) * (self.max_rf_phase-self.min_rf_phase) / 365.25
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
         for season in seasons:
@@ -91,29 +94,33 @@ class SNMetric(BaseMetric):
         return np.concatenate(r)
 
     def Ana_Season(self,dataSlice,season,shift):
-        names = ['fieldRA','fieldDec','season','band','MJD_min','season_length']
+        
         idx = dataSlice[self.seasonCol] == season
         sel = dataSlice[idx]
         fieldRA = np.mean(sel[self.RaCol])
         fieldDec =  np.mean(sel[self.DecCol])
         band  = np.unique(sel[self.filterCol])[0]
-        
+        Nvisits = np.median(sel[self.nexpCol]/2.) # one visit = 2 exposures
+        m5 = np.mean(sel[self.m5Col])
+        exptime = np.median(sel[self.exptimeCol])
         sel.sort(order = self.mjdCol)
         mjd_min = np.min(sel[self.mjdCol])
         mjd_max = np.max(sel[self.mjdCol])
         dates = np.arange(mjd_min, mjd_max+1., 1.)
         diff_time = dates[:,np.newaxis]-sel[self.mjdCol]
         cadence = np.mean(sel[self.mjdCol][1:]-sel[self.mjdCol][:-1])
+        names = ['fieldRA','fieldDec','season','band','MJD_min','season_length','Nvisits','m5','ExposureTime','Cadence']
         idx = diff_time >=0
         r=[]
         for io,id in enumerate(idx):
             T0 = dates[io]-shift
             ro = []
-            if T0 > mjd_min:
-                ro += [fieldRA,fieldDec,season,band,mjd_min,mjd_max-mjd_min]
-                ro+=[dates[io],T0,cadence]
+            if T0 > mjd_min+self.margin and len(sel[id])>=3:
+                cadence_eff = np.mean(sel[self.mjdCol][id][1:]-sel[self.mjdCol][id][:-1])
+                ro += [fieldRA,fieldDec,season,band,mjd_min,mjd_max-mjd_min,Nvisits,m5,exptime,cadence]
+                ro+=[dates[io],T0,cadence_eff]
                 if 'MJD' not in names:
-                    names+=['MJD','DayMax','Cadence']
+                    names+=['MJD','DayMax','Cadence_eff']
                 for ib,interp in enumerate(self.names_ref):
                     fluxes = self.lim_sn.fluxes[ib](T0-sel[self.mjdCol][id])
                     flux_5sigma = self.lim_sn.mag_to_flux[ib](sel[self.m5Col][id])

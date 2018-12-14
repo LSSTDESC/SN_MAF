@@ -88,22 +88,36 @@ def run(config_filename):
     #fake_obs = Generate_Fake_Observations(config_fake).Observations
     print(config_fake)
     #print(fake_obs.dtype)
+    m5_ref = dict(zip('grizy',[23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
+    
     for band, val in bdict.items():
         res = np.concatenate(val.metricValues[~val.metricValues.mask])
+        res = np.unique(res)
         for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
             idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
             sel = res[idx]
+            print('ici',Ra,Dec,season,len(sel),len(res))
             cadence = np.mean(sel['Cadence'])
             mjd_min = np.mean(sel['MJD_min'])
             season_length = np.mean(sel['season_length'])
-            config_fake['Cadence'][config_fake['bands'].index(band)] = cadence
+            Nvisits = np.median(sel['Nvisits'])
+            m5 = np.median(sel['m5'])
+            Tvisit = 30.
+            #cadence = 3.
+            config_fake['bands'] = [band]
+            config_fake['Cadence']= [cadence]
             config_fake['MJD_min'] = mjd_min
             config_fake['season_length'] = season_length
+            config_fake['Nvisits'] = [Nvisits]
+            m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
+            config_fake['m5']=[m5_nocoadd]
+            print(config_fake)
+            print(m5,m5_nocoadd,Tvisit,Nvisits)
             fake_obs = Generate_Fake_Observations(config_fake).Observations
             resb = metric[band].run(fake_obs[fake_obs['filter']==band])
             sel.sort(order='MJD')
-            print(sel)
-            print(resb)
+            print(len(sel[['MJD','DayMax','Cadence_eff','season']]),len(np.unique(sel[['MJD','DayMax','Cadence_eff','season']])))
+            #print(resb)
             plt.plot(sel['MJD'],sel['SNR_SNSim'])
             plt.plot(resb['MJD'],resb['SNR_SNSim'])
             plt.show()

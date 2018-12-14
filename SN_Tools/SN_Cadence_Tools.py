@@ -247,11 +247,6 @@ class Generate_Fake_Observations:
         self.exptimeCol = exptimeCol
         self.seasonCol = seasonCol
         self.nexpCol = nexpCol
-        """
-        self.nightCol = nightCol
-        self.obsidCol = obsidCol
-        self.vistimeCol = vistimeCol
-        """
         
         #now make fake obs
         self.make_fake(config)
@@ -259,32 +254,36 @@ class Generate_Fake_Observations:
     def make_fake(self, config):
 
         bands = config['bands']
-        val_coadded = [self.m5_coadd(config['m5'][i],
-                                             config['Nvisits'][i],
-                                             config['Exposure_Time'][i])
-                               for i,band in enumerate(bands)]
-        m5_coadded = dict(zip(bands,val_coadded))
-                              
-        print(m5_coadded)
+        cadence = dict(zip(bands,config['Cadence']))
+        shift_days = dict(zip(bands,[config['shift_days']*io for io in range(len(bands))]))
+        m5 = dict(zip(bands,config['m5']))
+        Nvisits = dict(zip(bands,config['Nvisits']))
+        Exposure_Time =  dict(zip(bands,config['Exposure_Time']))
         inter_season_gap = 300.
-        r = []
+
+        Ra = config['Ra']
+        Dec = config['Dec']
+        rtot = []
         for season in range(config['nseasons']):
             mjd_min=config['MJD_min']+ float(season)*inter_season_gap
             mjd_max=mjd_min+config['season_length']
-
+            
             for i,band in enumerate(bands):
-                cadence = config['Cadence'][i]
-                n_meas=(mjd_max-mjd_min)/cadence+1
-                for io in range(int(n_meas)):
-                    mjd = mjd_min+float(io)*cadence
-                    mjd_val=mjd+float(i)*config['shift_days']
-                    if mjd_val <= mjd_max+1:
-                        #print(mjd_val, config['Ra'],config['Dec'],band,m5_coadded[band],config['Nvisits'][i],int(config['Nvisits'][i]*config['Exposure_Time'][i]),season)
-                        r.append((mjd_val, config['Ra'],config['Dec'],band,m5_coadded[band],config['Nvisits'][i],int(config['Nvisits'][i]*config['Exposure_Time'][i]),season))
-        res = np.rec.fromrecords(r, names=[self.mjdCol,self.RaCol,self.DecCol,self.filterCol,self.m5Col,self.nexpCol,self.exptimeCol,self.seasonCol])
+                mjd = np.arange(mjd_min,mjd_max,cadence[band])
+                mjd += shift_days[band]
+                m5_coadded = self.m5_coadd(m5[band],
+                                             Nvisits[band],
+                                             Exposure_Time[band])
+                myarr =np.array(mjd, dtype=[(self.mjdCol,'f8')])
+                myarr = rf.append_fields(myarr, [self.RaCol,self.DecCol,self.filterCol],[[Ra]*len(myarr),[Dec]*len(myarr),[band]*len(myarr)])
+                myarr = rf.append_fields(myarr, [self.m5Col,self.nexpCol,self.exptimeCol,self.seasonCol],[[m5_coadded]*len(myarr),[Nvisits[band]]*len(myarr),[Nvisits[band]*Exposure_Time[band]]*len(myarr),[season]*len(myarr)])
+                rtot.append(myarr)
+                
+        res = np.copy(np.concatenate(rtot))
         res.sort(order = self.mjdCol)
+        
         self.Observations = res
-                        
+        
     def m5_coadd(self,m5,Nvisits,Tvisit):
         m5_coadd=m5+1.25*np.log10(float(Nvisits)*Tvisit/30.)
         return m5_coadd
