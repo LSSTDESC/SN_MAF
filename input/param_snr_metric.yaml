@@ -6,7 +6,7 @@ Observations:
    filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: -1 #season to simulate (-1 = all seasons)
+   season: 1 #season to simulate (-1 = all seasons)
    #bands: 'riz' #bands to consider
    bands: 'i'
    z: 0.7

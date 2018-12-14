@@ -264,7 +264,7 @@ class Generate_Fake_Observations:
         Ra = config['Ra']
         Dec = config['Dec']
         rtot = []
-        for season in range(config['nseasons']):
+        for season in range(1,config['nseasons']+1):
             mjd_min=config['MJD_min']+ float(season)*inter_season_gap
             mjd_max=mjd_min+config['season_length']
             

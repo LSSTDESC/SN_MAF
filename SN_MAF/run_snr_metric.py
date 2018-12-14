@@ -118,10 +118,11 @@ def run(config_filename):
             sel.sort(order='MJD')
             print(len(sel[['MJD','DayMax','Cadence_eff','season']]),len(np.unique(sel[['MJD','DayMax','Cadence_eff','season']])))
             #print(resb)
-            plt.plot(sel['MJD'],sel['SNR_SNSim'])
-            plt.plot(resb['MJD'],resb['SNR_SNSim'])
+            """
+            plt.scatter(sel['m5_eff'],sel['SNR_SNSim'])
+            plt.scatter(resb['m5_eff'],resb['SNR_SNSim'])
             plt.show()
-    
+            """
     # Let us display the results
     """
     for band, val in bdict.items():
