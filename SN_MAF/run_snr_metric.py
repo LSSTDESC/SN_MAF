@@ -65,17 +65,13 @@ def run(config_filename):
     for band in bands:
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
-        #sql_i += ' AND '
-        #sql_i +=  'season= "%s"' % (season)
+        
         lim_sn[band]= Reference_Data(config['Li file'],config['Mag_to_flux file'],band,z)
         
         metric[band]=module.SNMetric(config=config,coadd=config['Observations']['coadd'], lim_sn = lim_sn[band],names_ref=config['names_ref'])
         bundles.append(metricBundles.MetricBundle(metric[band], slicer, sql_i))
         names.append(band)
-       
-        print('sql',sql_i)
-    
-    print('hello',len(bundles))
+
     bdict = dict(zip(names,bundles))
    
     resultsDb = db.ResultsDb(outDir='None')

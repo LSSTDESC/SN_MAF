@@ -58,6 +58,8 @@ class SNMetric(BaseMetric):
         self.lim_sn = lim_sn
         self.names_ref = names_ref
 
+        self.display = config['Display_Processing']
+        
     def run(self, dataSlice, slicePoint=None):
         
         goodFilters = np.in1d(dataSlice['filter'],self.filterNames)
@@ -104,15 +106,17 @@ class SNMetric(BaseMetric):
         names = ['fieldRA','fieldDec','season','band','MJD_min','season_length','Nvisits','m5','ExposureTime','Cadence']
         idx = diff_time >=0
         r=[]
-        import pylab as plt 
-        plt.ion()
-        fig, ax = plt.subplots(ncols=1, nrows=2)
-        fig.canvas.draw()
-        fig.suptitle('Ra = '+str(fieldRA)+' Dec = '+str(fieldDec)+' season = '+str(season))
-        fieldid = str(np.round(fieldRA,2))+'_'+str(np.round(fieldDec,2))
+        if self.display:
+            import pylab as plt 
+            plt.ion()
+            fig, ax = plt.subplots(ncols=1, nrows=2)
+            fig.canvas.draw()
+            fig.suptitle('Ra = '+str(fieldRA)+' Dec = '+str(fieldDec)+' season = '+str(season))
+            fieldid = str(np.round(fieldRA,2))+'_'+str(np.round(fieldDec,2))
+            
         for io,id in enumerate(idx):
             T0 = dates[io]-shift
-            print('go',T0,dates[io],dates[-1])
+            #print('go',T0,dates[io],dates[-1])
             ro = []
             if T0 > mjd_min+self.margin and len(sel[id])>=2:
                 cadence_eff = np.mean(sel[self.mjdCol][id][1:]-sel[self.mjdCol][id][:-1])
@@ -138,10 +142,11 @@ class SNMetric(BaseMetric):
                         names.append('SNR_'+self.names_ref[ib])
                 if ro:
                     r.append(ro)
-                self.Plot(fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,dates[io],dates[-1],
-                          self.config['names_ref'],
-                          np.rec.fromrecords(r,names = names),
-                          fieldid,io)
+                if self.display:
+                    self.Plot(fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,dates[io],dates[-1],
+                              self.config['names_ref'],
+                              np.rec.fromrecords(r,names = names),
+                              fieldid,io)
             
         #print(r)
         res = np.rec.fromrecords(r,names = names)
