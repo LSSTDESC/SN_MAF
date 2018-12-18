@@ -78,13 +78,7 @@ def run(config_filename):
     mbg =  metricBundles.MetricBundleGroup(bdict, opsimdb,
                                       outDir=outDir, resultsDb=resultsDb)
     
-    result = mbg.runAll()
-
-    config_fake = yaml.load(open(config['Fake_file']))
-    #fake_obs = Generate_Fake_Observations(config_fake).Observations
-    print(config_fake)
-    #print(fake_obs.dtype)
-    m5_ref = dict(zip('grizy',[23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
+    result = mbg.runAll()  
     
     for band, val in bdict.items():
         res = np.concatenate(val.metricValues[~val.metricValues.mask])
@@ -92,33 +86,9 @@ def run(config_filename):
         for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
             idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
             sel = res[idx]
-            print('ici',Ra,Dec,season,len(sel),len(res))
-            cadence = np.mean(sel['Cadence'])
-            mjd_min = np.mean(sel['MJD_min'])
-            season_length = np.mean(sel['season_length'])
-            Nvisits = np.median(sel['Nvisits'])
-            m5 = np.median(sel['m5'])
-            Tvisit = 30.
-            #cadence = 3.
-            config_fake['bands'] = [band]
-            config_fake['Cadence']= [cadence]
-            config_fake['MJD_min'] = mjd_min
-            config_fake['season_length'] = season_length
-            config_fake['Nvisits'] = [Nvisits]
-            m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
-            config_fake['m5']=[m5_nocoadd]
-            print(config_fake)
-            print(m5,m5_nocoadd,Tvisit,Nvisits)
-            fake_obs = Generate_Fake_Observations(config_fake).Observations
-            resb = metric[band].run(fake_obs[fake_obs['filter']==band])
-            sel.sort(order='MJD')
-            print(len(sel[['MJD','DayMax','Cadence_eff','season']]),len(np.unique(sel[['MJD','DayMax','Cadence_eff','season']])))
-            #print(resb)
-            """
-            plt.scatter(sel['m5_eff'],sel['SNR_SNSim'])
-            plt.scatter(resb['m5_eff'],resb['SNR_SNSim'])
-            plt.show()
-            """
+            Plot_SNR(Ra,Dec,season,band,sel,config,metric)
+    
+        
     # Let us display the results
     """
     for band, val in bdict.items():
@@ -129,7 +99,54 @@ def run(config_filename):
     #mbg.plotAll(closefigs=False)
     #mbg.plot()
     plt.show()
+
+def Plot_SNR(Ra,Dec,season,band,sel,config,metric):
+      colors = ['b','r']
+      fontsize = 15
+
+      tot_label=[]
+      fig, ax = plt.subplots(ncols=1, nrows=1)
+      fig.suptitle('Ra = '+str(np.round(Ra,2))+' Dec = '+str(np.round(Dec,2))+' \n '+band+' band - season '+str(int(season)),fontsize = fontsize)
+
+      fake_obs = Get_Fake_Obs(sel,config,band)
+      resb = metric[band].run(fake_obs[fake_obs['filter']==band])
+      sel.sort(order='MJD')
+      
+      for io, sim in enumerate(config['names_ref']):
+          tot_label.append(ax.errorbar(sel['MJD'],sel['SNR_'+sim],ls='-',color=colors[io], label = sim))
+          tot_label.append(ax.errorbar(resb['MJD'],resb['SNR_'+sim],ls='--',color = colors[io],label = sim+'_fake'))
+      ax.set_xlabel('MJD [day]',fontsize = fontsize)
+      ax.set_ylabel('Signal-To-Noise ratio',fontsize = fontsize)
+      ax.tick_params(axis='x', labelsize=fontsize)
+      ax.tick_params(axis='y', labelsize=fontsize)
+      labs = [l.get_label() for l in tot_label]
+      ax.legend(tot_label, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
+
+                           
+def Get_Fake_Obs(sel,config,band):
+
+    config_fake = yaml.load(open(config['Fake_file']))
     
+    m5_ref = dict(zip('grizy',[23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
+
+    cadence = np.mean(sel['Cadence'])
+    mjd_min = np.mean(sel['MJD_min'])
+    season_length = np.mean(sel['season_length'])
+    Nvisits = np.median(sel['Nvisits'])
+    m5 = np.median(sel['m5'])
+    Tvisit = 30.
+    #cadence = 3.
+    
+    config_fake['bands'] = [band]
+    config_fake['Cadence']= [cadence]
+    config_fake['MJD_min'] = mjd_min
+    config_fake['season_length'] = season_length
+    config_fake['Nvisits'] = [Nvisits]
+    m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
+    config_fake['m5']=[m5_nocoadd]
+    fake_obs = Generate_Fake_Observations(config_fake).Observations
+    return fake_obs
+
 def main(args):
     print('running')
     time_ref = time.time()

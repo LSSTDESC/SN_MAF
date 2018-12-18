@@ -265,11 +265,11 @@ class Generate_Fake_Observations:
         Dec = config['Dec']
         rtot = []
         for season in range(1,config['nseasons']+1):
-            mjd_min=config['MJD_min']+ float(season)*inter_season_gap
+            mjd_min=config['MJD_min']+ float(season-1)*inter_season_gap
             mjd_max=mjd_min+config['season_length']
             
             for i,band in enumerate(bands):
-                mjd = np.arange(mjd_min,mjd_max,cadence[band])
+                mjd = np.arange(mjd_min,mjd_max+cadence[band],cadence[band])
                 mjd += shift_days[band]
                 m5_coadded = self.m5_coadd(m5[band],
                                              Nvisits[band],
