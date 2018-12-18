@@ -46,7 +46,7 @@ class Lims:
         dt = np.linspace(self.dt_range[0], self.dt_range[1], 100)
         m5 = np.linspace(self.mag_range[0], self.mag_range[1], 50)
         ida = mag_to_flux['band'] == self.band
-        fa = interpolate.interp1d(mag_to_flux[ida]['m5'],mag_to_flux[ida]['flux'])
+        fa = interpolate.interp1d(mag_to_flux[ida]['m5'],mag_to_flux[ida]['flux_e'])
         f5 = fa(m5)
         F5,DT = np.meshgrid(f5, dt)
         M5,DT = np.meshgrid(m5, dt)
