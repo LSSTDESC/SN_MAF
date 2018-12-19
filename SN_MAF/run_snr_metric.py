@@ -86,7 +86,7 @@ def run(config_filename):
         for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
             idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
             sel = res[idx]
-            Plot_SNR(Ra,Dec,season,band,sel,config,metric)
+            #Plot_SNR(Ra,Dec,season,band,sel,config,metric)
     
         
     # Let us display the results
@@ -108,13 +108,13 @@ def Plot_SNR(Ra,Dec,season,band,sel,config,metric):
       fig, ax = plt.subplots(ncols=1, nrows=1)
       fig.suptitle('Ra = '+str(np.round(Ra,2))+' Dec = '+str(np.round(Dec,2))+' \n '+band+' band - season '+str(int(season)),fontsize = fontsize)
 
-      fake_obs = Get_Fake_Obs(sel,config,band)
-      resb = metric[band].run(fake_obs[fake_obs['filter']==band])
+      #fake_obs = Get_Fake_Obs(sel,config,band)
+      #resb = metric[band].run(fake_obs[fake_obs['filter']==band])
       sel.sort(order='MJD')
       
       for io, sim in enumerate(config['names_ref']):
           tot_label.append(ax.errorbar(sel['MJD'],sel['SNR_'+sim],ls='-',color=colors[io], label = sim))
-          tot_label.append(ax.errorbar(resb['MJD'],resb['SNR_'+sim],ls='--',color = colors[io],label = sim+'_fake'))
+          #tot_label.append(ax.errorbar(resb['MJD'],resb['SNR_'+sim],ls='--',color = colors[io],label = sim+'_fake'))
       ax.set_xlabel('MJD [day]',fontsize = fontsize)
       ax.set_ylabel('Signal-To-Noise ratio',fontsize = fontsize)
       ax.tick_params(axis='x', labelsize=fontsize)

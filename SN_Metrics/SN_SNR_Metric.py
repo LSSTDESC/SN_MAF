@@ -82,13 +82,12 @@ class SNMetric(BaseMetric):
             seasons = np.unique(dataSlice[self.seasonCol])
 
         r = []
+        """
         result_queue = multiprocessing.Queue()
         for season in seasons:
             p=multiprocessing.Process(name='Subprocess-'+str(season),target=self.Ana_Season,args=(dataSlice,season,shift,season,result_queue))
             p.start()
-            #proc_season = self.Ana_Season(dataSlice,season,shift)
-            #if proc_season is not None:
-                #r.append(proc_season)
+           
 
         resultdict = {}
         for season in seasons:
@@ -99,7 +98,13 @@ class SNMetric(BaseMetric):
 
         for season in seasons:
              r.append(resultdict[season])  
-            
+
+        """
+        for season in seasons:
+            proc_season = self.Ana_Season(dataSlice,season,shift)
+            if proc_season is not None:
+                r.append(proc_season)
+                
         return np.concatenate(r)
 
     def Ana_Season(self,dataSlice,season,shift,j=-1,output_q=None):
@@ -116,11 +121,47 @@ class SNMetric(BaseMetric):
         sel.sort(order = self.mjdCol)
         mjds = sel[self.mjdCol]
         mjd_min, mjd_max = np.min(mjds), np.max(mjds)
+        season_length = mjd_max-mjd_min
         dates = np.arange(mjd_min, mjd_max+1., 1.)
+        T0_lc = dates-shift
         cadence = np.mean(mjds[1:]-mjds[:-1])
         band = np.unique(sel[self.filterCol])[0]
         diff_time = dates[:,np.newaxis]-mjds
+        time_for_lc = -T0_lc[:,None]+mjds
+        flag = diff_time >=0
         
+        print('T0',T0_lc)
+        print('MJDS',mjds)
+        print(time_for_lc)
+        print('hello',sel[[self.m5Col,self.mjdCol]])
+        m5_vals = np.tile(sel[self.m5Col],(len(time_for_lc),1))
+        mjd_vals = np.tile(sel[self.mjdCol],(len(time_for_lc),1))
+        
+        res_new = None
+        fluxes_tot= []
+        for ib,interp in enumerate(self.names_ref):
+            name = self.names_ref[ib]
+            fluxes,snr = self.SNR_new(time_for_lc,m5_vals,flag,ib)
+            fluxes_tot.append(fluxes)
+            if res_new is None:
+                res_new = np.array(snr, dtype=[('SNR_'+name,'f8')])
+            else:
+                res_new = rf.append_fields(res_new,'SNR_'+name,snr)
+
+        res_new = rf.append_fields(res_new,'DayMax',T0_lc)
+        res_new = rf.append_fields(res_new,'MJD',dates)
+        res_new = rf.append_fields(res_new,'m5_eff',np.mean(np.ma.array(m5_vals,mask=~flag), axis=1))
+        
+        global_info = [(fieldRA,fieldDec,band,season_length,cadence,m5,mjd_min,season,Nvisits,exptime)]*len(res_new)
+        names = ['fieldRA','fieldDec','band','season_length','Cadence','m5','MJD_min','season','Nvisits','ExposureTime']
+        global_info = np.rec.fromrecords(global_info,names = names)
+        res_new = rf.append_fields(res_new,names,[global_info[name] for name in names])
+     
+        self.Plot_new(fluxes_tot,mjd_vals,flag,res_new,self.config['names_ref'])
+        """
+        print(time_for_lc[:,-1])
+        print(np.where(diff_time >=0.))
+        """
         idx = diff_time >=0
       
         r=[]
@@ -137,7 +178,8 @@ class SNMetric(BaseMetric):
     
         for io,id in enumerate(idx):
             T0 = dates[io]-shift
-            if T0 > mjd_min+self.margin and len(sel[id])>=2:
+            #if T0 > mjd_min+self.margin and len(sel[id])>=2:
+            if T0 > -666.:
                 sel_tot,fluxes_tot,res, names = self.Fill_Vals(sel[id],dates,io,T0,ro, names)
                 if res is not None:
                     r.append(res)
@@ -152,6 +194,10 @@ class SNMetric(BaseMetric):
         if output_q is not None:
             output_q.put({j : res})
         else:
+            print(res[['m5_eff','SNR_SNSim','SNR_SNCosmo']],res_new[['m5_eff','SNR_SNSim','SNR_SNCosmo']])
+            print(len(res),len(res_new))
+            print(res.dtype)
+            print(res_new.dtype)
             return res
 
     def Fill_Vals(self, sel_ref,dates,io,T0,r_ref, names_ref):
@@ -204,13 +250,52 @@ class SNMetric(BaseMetric):
 
     def SNR(self,sel,T0,ib):
         
-        fluxes = self.lim_sn.fluxes[ib](T0-np.copy(sel[self.mjdCol]))
+        fluxes = self.lim_sn.fluxes[ib](np.copy(sel[self.mjdCol])-T0)
         flux_5sigma = self.lim_sn.mag_to_flux[ib](np.copy(sel[self.m5Col]))
         snr = np.sum(fluxes**2/flux_5sigma**2)
         snr = 5.*np.sqrt(snr)
                         
         return sel,fluxes,snr
+
+    def SNR_new(self, time_lc, m5_vals, flag,ib):
+
+        fluxes = self.lim_sn.fluxes[ib](time_lc)
+        flux_5sigma = self.lim_sn.mag_to_flux[ib](m5_vals)
+        snr = fluxes**2/flux_5sigma**2
         
+        return fluxes,5.*np.sqrt(np.sum(snr*flag,axis =1))
+
+    def Plot_new(self,fluxes, mjd,flag,snr, names):
+
+        import pylab as plt
+        plt.ion()
+        fig, ax = plt.subplots(ncols=1, nrows=2)
+        fig.canvas.draw()
+      
+        colors = ['b','r']
+        myls = ['-','--']
+
+        mjd_ma = np.ma.array(mjd,mask=~flag)
+        #for ib in range(len(fluxes)):
+        fluxes_ma = {}
+        for ib, name in enumerate(names):
+            fluxes_ma[name] = np.ma.array(fluxes[ib], mask=~flag)
+        """
+        ib=0
+        flux = fluxes[ib]
+        fluxes_ma = np.ma.array(flux, mask=~flag)
+        """
+        key = names[0]
+        jmax = len(fluxes_ma[key])
+        for j in range(len(fluxes_ma[key])):
+            for ib, name in enumerate(names):
+                ax[0].errorbar(mjd_ma[j],fluxes_ma[name][j],marker='s',color=colors[ib],ls = myls[ib])
+                ax[1].plot(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib])
+            fig.canvas.flush_events()
+            if j != jmax-1:
+                ax[0].clear()
+        
+                
     def Plot (self,fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,current_mjd,mjd_max,name,snr,fieldid,inum):
         
         colors = ['b','r']
