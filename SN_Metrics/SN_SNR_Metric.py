@@ -274,34 +274,45 @@ class SNMetric(BaseMetric):
       
         colors = ['b','r']
         myls = ['-','--']
-
+        mfc = ['b','None']
+        tot_label = []
+        fontsize = 12
         mjd_ma = np.ma.array(mjd,mask=~flag)
-        #for ib in range(len(fluxes)):
         fluxes_ma = {}
         for ib, name in enumerate(names):
             fluxes_ma[name] = np.ma.array(fluxes[ib], mask=~flag)
-        """
-        ib=0
-        flux = fluxes[ib]
-        fluxes_ma = np.ma.array(flux, mask=~flag)
-        """
+
         key = names[0]
         jmax = len(fluxes_ma[key])
-        for j in range(len(fluxes_ma[key])):
+        tot_label=[]
+        tot_label_snr = []
+        for j in range(jmax):
+            print('hhh',j,jmax-1)
             for ib, name in enumerate(names):
-                ax[0].errorbar(mjd_ma[j],fluxes_ma[name][j],marker='s',color=colors[ib],ls = myls[ib])
-                ax[1].plot(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib])
+                tot_label.append(ax[0].errorbar(mjd_ma[j],fluxes_ma[name][j],marker='s',color=colors[ib],ls = myls[ib],label=name))
+                tot_label_snr.append(ax[1].plot(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib],label=name))
             fig.canvas.flush_events()
-            if j != jmax-1:
+            if j < jmax-2:
+                print('cleaning',j)
                 ax[0].clear()
-        
-                
+                tot_label=[]
+                tot_label_snr = []
+
+        print('hello',len(tot_label))
+        labs = [l.get_label() for l in tot_label]
+        ax[0].legend(tot_label, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
+        ax[0].set_ylabel('Flux [e.sec$^{-1}$]',fontsize = fontsize)
+        """
+        labs = [l.get_label() for l in tot_label_snr]
+        ax[1].legend(tot_label_snr, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
+        """
     def Plot (self,fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,current_mjd,mjd_max,name,snr,fieldid,inum):
         
         colors = ['b','r']
         myls = ['-','--']
         mfc = ['b','None']
         tot_label = []
+        tot_label_snr = []
         fontsize = 12
         fluxes = []
         for key, flux in fluxes_tot.items():
@@ -310,7 +321,7 @@ class SNMetric(BaseMetric):
         max_fluxes = np.max(np.concatenate(fluxes))
         
         tot_label.append(ax[0].errorbar([T0,T0],[min_fluxes,max_fluxes],color='k',label = 'DayMax'))
-        tot_label.append(ax[0].errorbar([current_mjd,current_mjd],[min_fluxes,max_fluxes],color='k',ls='--', label ='Current MJD'))
+        tot_label_snr.append(ax[0].errorbar([current_mjd,current_mjd],[min_fluxes,max_fluxes],color='k',ls='--', label ='Current MJD'))
 
         ib = -1
         for key, sel in sel_tot.items():
