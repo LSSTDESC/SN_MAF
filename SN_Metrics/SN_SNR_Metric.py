@@ -61,7 +61,7 @@ class SNMetric(BaseMetric):
 
         self.display = config['Display_Processing']
         
-    def run(self, dataSlice, slicePoint=None):
+    def run(self, dataSlice, seasons_=None,slicePoint=None):
         
         goodFilters = np.in1d(dataSlice['filter'],self.filterNames)
         dataSlice = dataSlice[goodFilters]
@@ -70,47 +70,51 @@ class SNMetric(BaseMetric):
         dataSlice.sort(order=self.mjdCol)
         
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
-        r = []
+        #r = []
         shift = 10 # SN DayMax: current date - shift days
-        seasons = [self.season]
-        self.max_rf_phase = -20
-        self.min_rf_phase = 40
         
-        self.margin = (1.+self.config['Observations']['z']) * (self.max_rf_phase-self.min_rf_phase) / 365.25
-        
+        seasons = self.season
+        if seasons_ is not None:
+            seasons=seasons_
+            
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
 
-        r = []
+        proc_season = self.Ana_Season(dataSlice,seasons,shift)
         """
-        result_queue = multiprocessing.Queue()
-        for season in seasons:
-            p=multiprocessing.Process(name='Subprocess-'+str(season),target=self.Ana_Season,args=(dataSlice,season,shift,season,result_queue))
-            p.start()
-           
+        if proc_season is not None:
+            r.append(proc_season)
+        """
+        return proc_season
+    
+    def Ana_Season(self,dataSlice,seasons,shift,j=-1,output_q=None):
 
-        resultdict = {}
+        sel = None
+        """
+        periods = {}
+        cadence = {}
+        season_length = {}
+        mjd_min = {}
+        """
+        rv = []
         for season in seasons:
-            resultdict.update(result_queue.get())
+            idx =(dataSlice[self.seasonCol] == season)
+            slice_sel = dataSlice[idx]
+            slice_sel.sort(order=self.mjdCol)
+            mjds_season = slice_sel[self.mjdCol]
+            #periods[season]= (np.min(mjds_season),np.max(mjds_season))
+            cadence  = np.mean(mjds_season[1:]-mjds_season[:-1])
+            mjd_min = np.min(mjds_season)
+            mjd_max = np.max(mjds_season)
+            season_length = mjd_max-mjd_min
+            rv.append((float(season),cadence,season_length,mjd_min,mjd_max))
+            if sel is None:
+                sel = dataSlice[idx]
+            else:
+                sel = np.concatenate((sel, dataSlice[idx]))
+
+        self.info_season = np.rec.fromrecords(rv, names=['season','cadence','season_length','MJD_min','MJD_max'])
         
-        for p in multiprocessing.active_children():
-            p.join()
-
-        for season in seasons:
-             r.append(resultdict[season])  
-
-        """
-        for season in seasons:
-            proc_season = self.Ana_Season(dataSlice,season,shift)
-            if proc_season is not None:
-                r.append(proc_season)
-                
-        return np.concatenate(r)
-
-    def Ana_Season(self,dataSlice,season,shift,j=-1,output_q=None):
-   
-        idx = dataSlice[self.seasonCol] == season
-        sel = dataSlice[idx]
         if len(sel) == 0:
             return None
         fieldRA = np.mean(sel[self.RaCol])
@@ -120,152 +124,71 @@ class SNMetric(BaseMetric):
         exptime = np.median(sel[self.exptimeCol])
         sel.sort(order = self.mjdCol)
         mjds = sel[self.mjdCol]
-        mjd_min, mjd_max = np.min(mjds), np.max(mjds)
-        season_length = mjd_max-mjd_min
-        dates = np.arange(mjd_min, mjd_max+1., 1.)
+        dates = None
+        #for key, val in periods.items():
+        for val in self.info_season:
+            if dates is None:
+                dates = np.arange(val['MJD_min'], val['MJD_max']+1., 1.)
+            else:
+                dates = np.concatenate((dates, np.arange(val['MJD_min'], val['MJD_max']+1., 1.)))
+        
         T0_lc = dates-shift
-        cadence = np.mean(mjds[1:]-mjds[:-1])
+        
         band = np.unique(sel[self.filterCol])[0]
         diff_time = dates[:,np.newaxis]-mjds
         time_for_lc = -T0_lc[:,None]+mjds
-        flag = diff_time >=0
+        flag = (diff_time >=0)&(diff_time<=200.)
         
-        print('T0',T0_lc)
-        print('MJDS',mjds)
-        print(time_for_lc)
-        print('hello',sel[[self.m5Col,self.mjdCol]])
         m5_vals = np.tile(sel[self.m5Col],(len(time_for_lc),1))
         mjd_vals = np.tile(sel[self.mjdCol],(len(time_for_lc),1))
-        
-        res_new = None
-        fluxes_tot= []
-        for ib,interp in enumerate(self.names_ref):
-            name = self.names_ref[ib]
-            fluxes,snr = self.SNR_new(time_for_lc,m5_vals,flag,ib)
-            fluxes_tot.append(fluxes)
-            if res_new is None:
-                res_new = np.array(snr, dtype=[('SNR_'+name,'f8')])
-            else:
-                res_new = rf.append_fields(res_new,'SNR_'+name,snr)
-
-        res_new = rf.append_fields(res_new,'DayMax',T0_lc)
-        res_new = rf.append_fields(res_new,'MJD',dates)
-        res_new = rf.append_fields(res_new,'m5_eff',np.mean(np.ma.array(m5_vals,mask=~flag), axis=1))
-        
-        global_info = [(fieldRA,fieldDec,band,season_length,cadence,m5,mjd_min,season,Nvisits,exptime)]*len(res_new)
-        names = ['fieldRA','fieldDec','band','season_length','Cadence','m5','MJD_min','season','Nvisits','ExposureTime']
-        global_info = np.rec.fromrecords(global_info,names = names)
-        res_new = rf.append_fields(res_new,names,[global_info[name] for name in names])
-     
-        self.Plot_new(fluxes_tot,mjd_vals,flag,res_new,self.config['names_ref'])
-        """
-        print(time_for_lc[:,-1])
-        print(np.where(diff_time >=0.))
-        """
-        idx = diff_time >=0
-      
-        r=[]
-        names = ['fieldRA','fieldDec','band','MJD_min','season_length','Nvisits','m5','ExposureTime','Cadence']
-        ro = [fieldRA,fieldDec,band,mjd_min,mjd_max-mjd_min,Nvisits,m5,exptime,cadence]
-        if self.display:
-            import pylab as plt 
-            plt.ion()
-            fig, ax = plt.subplots(ncols=1, nrows=2)
-            fig.canvas.draw()
-            fig.suptitle('Ra = '+str(np.round(fieldRA,2))+' Dec = '+str(np.round(fieldDec,2))+' \n '+band+' band - season '+str(season))
-            fieldid = str(np.round(fieldRA,2))+'_'+str(np.round(fieldDec,2))
-        T0 = dates-shift
+        season_vals = np.tile(sel[self.seasonCol],(len(time_for_lc),1))
     
-        for io,id in enumerate(idx):
-            T0 = dates[io]-shift
-            #if T0 > mjd_min+self.margin and len(sel[id])>=2:
-            if T0 > -666.:
-                sel_tot,fluxes_tot,res, names = self.Fill_Vals(sel[id],dates,io,T0,ro, names)
-                if res is not None:
-                    r.append(res)
+        fluxes_tot, snr= self.SNR(time_for_lc,m5_vals,flag,season_vals)
         
-                if self.display:
-                    self.Plot(fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,dates[io],dates[-1],
-                              self.config['names_ref'],
-                              np.rec.fromrecords(r,names = names),
-                              fieldid,io)
+        _,idx = np.unique(snr['season'],return_inverse=True)
+        infos = self.info_season[idx]
+        vars_info = ['cadence','season_length','MJD_min']
+        snr = rf.append_fields(snr,vars_info,[infos[name] for name in vars_info])
+        snr = rf.append_fields(snr,'DayMax',T0_lc)
+        snr = rf.append_fields(snr,'MJD',dates)
+        snr = rf.append_fields(snr,'m5_eff',np.mean(np.ma.array(m5_vals,mask=~flag), axis=1))
+        global_info = [(fieldRA,fieldDec,band,m5,Nvisits,exptime)]*len(snr)
+        names = ['fieldRA','fieldDec','band','m5','Nvisits','ExposureTime']
+        global_info = np.rec.fromrecords(global_info,names = names)
+        snr = rf.append_fields(snr,names,[global_info[name] for name in names])
+        if self.display:
+            self.Plot(fluxes_tot,mjd_vals,flag,snr,T0_lc,dates)
             
-        res = np.rec.fromrecords(r,names = names)
         if output_q is not None:
-            output_q.put({j : res})
+            output_q.put({j : snr})
         else:
-            print(res[['m5_eff','SNR_SNSim','SNR_SNCosmo']],res_new[['m5_eff','SNR_SNSim','SNR_SNCosmo']])
-            print(len(res),len(res_new))
-            print(res.dtype)
-            print(res_new.dtype)
-            return res
+            return snr
 
-    def Fill_Vals(self, sel_ref,dates,io,T0,r_ref, names_ref):
+    def SNR(self, time_lc, m5_vals, flag,season_vals):
 
-        ro = r_ref.copy()
-        names = names_ref.copy()
-        dict_vals = dict(zip(names_ref,r_ref))
-        #cadence_eff = np.mean(sel[self.mjdCol][id][1:]-sel[self.mjdCol][id][:-1])
-        #m5_eff = np.mean(sel[self.m5Col][id])
-        cadence_eff = np.mean(sel_ref[self.mjdCol][1:]-sel_ref[self.mjdCol][:-1])
-        m5_eff = np.mean(sel_ref[self.m5Col])
-        #this is to estimate the results with a "perfect" cadence
-
-        #fakes = np.array(np.arange(np.min(sel_ref[self.mjdCol]),np.max(sel_ref[self.mjdCol]),cadence_eff),dtype=[(self.mjdCol,'f8')])
-        fakes = np.array(np.arange(np.min(sel_ref[self.mjdCol]),np.max(sel_ref[self.mjdCol]),3.),dtype=[(self.mjdCol,'f8')])
-        fakes = rf.append_fields(fakes,self.m5Col,[m5_eff]*len(fakes))
-        
-        ro+=[dates[io],T0,cadence_eff,m5_eff]
-        names+=['MJD','DayMax','Cadence_eff','m5_eff']
-                
-        sel_tot = {}
+        seasons = np.ma.array(season_vals,mask=~flag)
         fluxes_tot = {}
-
-        for season in np.unique(sel_ref['season']):
-            idxa = sel_ref['season'] == season
-            sel_season = sel_ref[idxa]
-            names.append('season')
-            ro.append(season)
-            for ib,interp in enumerate(self.names_ref):
-                    name = self.names_ref[ib]
-                    sel,fluxes,snr = self.SNR(sel_season,T0,ib)
-                    fluxes_tot[name] = fluxes
-                    sel_tot[name] = sel
-                    """
-                    ro .append(band)
-                    if 'band' not in names:
-                    names.append('band')
-                    """
-                    ro.append(snr)
-                    names.append('SNR_'+self.names_ref[ib])
-
-            """
-            sel,fluxes,snr = self.SNR(fakes,T0,ib)
-            fluxes_tot[name+'_fake'] = fluxes
-            sel_tot[name+'_fake'] = sel
-            ro.append(snr)
-            names.append('SNR_'+self.names_ref[ib]+'_fake')
-            """
-        return sel_tot,fluxes_tot,tuple(ro),names
-
-    def SNR(self,sel,T0,ib):
+        snr_tab = None
         
-        fluxes = self.lim_sn.fluxes[ib](np.copy(sel[self.mjdCol])-T0)
-        flux_5sigma = self.lim_sn.mag_to_flux[ib](np.copy(sel[self.m5Col]))
-        snr = np.sum(fluxes**2/flux_5sigma**2)
-        snr = 5.*np.sqrt(snr)
-                        
-        return sel,fluxes,snr
-
-    def SNR_new(self, time_lc, m5_vals, flag,ib):
-
-        fluxes = self.lim_sn.fluxes[ib](time_lc)
-        flux_5sigma = self.lim_sn.mag_to_flux[ib](m5_vals)
-        snr = fluxes**2/flux_5sigma**2
+        for ib,name in enumerate(self.names_ref):
+            fluxes = self.lim_sn.fluxes[ib](time_lc)
+            if name not in fluxes_tot.keys():
+                fluxes_tot[name] = fluxes
+            else:
+                fluxes_tot[name] = np.concatenate((fluxes_tot[name],fluxes))
+                
+            flux_5sigma = self.lim_sn.mag_to_flux[ib](m5_vals)
+            snr = fluxes**2/flux_5sigma**2
+            snr_season = 5.*np.sqrt(np.sum(snr*flag,axis =1))
+            if snr_tab is None:
+                snr_tab = np.asarray(np.copy(snr_season),dtype=[('SNR_'+name,'f8')])
+            else:
+                snr_tab= rf.append_fields(snr_tab,'SNR_'+name,np.copy(snr_season))
+        snr_tab = rf.append_fields(snr_tab,'season',np.mean(seasons, axis = 1))
         
-        return fluxes,5.*np.sqrt(np.sum(snr*flag,axis =1))
-
-    def Plot_new(self,fluxes, mjd,flag,snr, names):
+        return fluxes_tot,snr_tab
+    
+    def Plot(self,fluxes, mjd,flag,snr,T0_lc, dates):
 
         import pylab as plt
         plt.ion()
@@ -279,89 +202,42 @@ class SNMetric(BaseMetric):
         fontsize = 12
         mjd_ma = np.ma.array(mjd,mask=~flag)
         fluxes_ma = {}
-        for ib, name in enumerate(names):
-            fluxes_ma[name] = np.ma.array(fluxes[ib], mask=~flag)
+        for key, val in fluxes.items():
+            fluxes_ma[key] = np.ma.array(val, mask=~flag)
 
-        key = names[0]
+        key = list(fluxes.keys())[0]
         jmax = len(fluxes_ma[key])
         tot_label=[]
         tot_label_snr = []
+        min_flux = []
+        max_flux =  []
         for j in range(jmax):
-            print('hhh',j,jmax-1)
-            for ib, name in enumerate(names):
+             
+            for ib,name in enumerate(fluxes_ma.keys()):
                 tot_label.append(ax[0].errorbar(mjd_ma[j],fluxes_ma[name][j],marker='s',color=colors[ib],ls = myls[ib],label=name))
-                tot_label_snr.append(ax[1].plot(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib],label=name))
+                #tot_label_snr.append(ax[1].errorbar(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib],label=name,ls='None',marker='.',ms=3.))
+                tot_label_snr.append(ax[1].errorbar(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib],label=name))
+                min_flux.append(np.min(fluxes_ma[name][j]))
+                max_flux.append(np.max(fluxes_ma[name][j]))
+            min_fluxes = np.min(min_flux)
+            max_fluxes = np.max(max_flux)
+            tot_label.append(ax[0].errorbar([T0_lc[j],T0_lc[j]],[min_fluxes,max_fluxes],color='k',label = 'DayMax'))
+            tot_label.append(ax[0].errorbar([dates[j],dates[j]],[min_fluxes,max_fluxes],color='k',ls='--', label ='Current MJD'))
             fig.canvas.flush_events()
-            if j < jmax-2:
-                print('cleaning',j)
+            if j != jmax-1:
                 ax[0].clear()
                 tot_label=[]
                 tot_label_snr = []
 
-        print('hello',len(tot_label))
         labs = [l.get_label() for l in tot_label]
         ax[0].legend(tot_label, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
         ax[0].set_ylabel('Flux [e.sec$^{-1}$]',fontsize = fontsize)
-        """
-        labs = [l.get_label() for l in tot_label_snr]
-        ax[1].legend(tot_label_snr, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
-        """
-    def Plot (self,fig,ax,sel_tot,fluxes_tot,T0,shift,cadence,current_mjd,mjd_max,name,snr,fieldid,inum):
-        
-        colors = ['b','r']
-        myls = ['-','--']
-        mfc = ['b','None']
-        tot_label = []
-        tot_label_snr = []
-        fontsize = 12
-        fluxes = []
-        for key, flux in fluxes_tot.items():
-            fluxes.append(flux)
-        min_fluxes = np.min(np.concatenate(fluxes))
-        max_fluxes = np.max(np.concatenate(fluxes))
-        
-        tot_label.append(ax[0].errorbar([T0,T0],[min_fluxes,max_fluxes],color='k',label = 'DayMax'))
-        tot_label_snr.append(ax[0].errorbar([current_mjd,current_mjd],[min_fluxes,max_fluxes],color='k',ls='--', label ='Current MJD'))
-
-        ib = -1
-        for key, sel in sel_tot.items():
-            if 'fake' not in key:
-                ib+=1
-                tot_label.append(ax[0].errorbar(sel[self.mjdCol],fluxes_tot[key],marker='s',color=colors[ib],ls = myls[ib],label = key))
-                #test = np.arange(np.min(sel[self.mjdCol]),current_mjd,cadence)
-                #tot_label.append(ax[0].errorbar(test, self.lim_sn.fluxes[ib](T0-test),color=colors[ib],marker='o',label = name[ib]+' regular cadence',ls='None',markerfacecolor=mfc[ib]))
-            
-        fig.canvas.flush_events()
-        labs = [l.get_label() for l in tot_label]
-        ax[0].legend(tot_label, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
-        #ax[0].set_xlabel('MJD',fontsize = fontsize)
-        ax[0].set_ylabel('Flux [e.sec$^{-1}$]',fontsize = fontsize)
-       
-
-        for i, val in enumerate(name):
-            if mjd_max - current_mjd != 0.:
-                ax[1].plot(snr['MJD'],snr['SNR_'+val],color=colors[i])
-                #ax[1].plot(snr['MJD'],snr['SNR_'+val+'_fake'],color=colors[i],ls = '--')
-            else:
-               ax[1].plot(snr['MJD'],snr['SNR_'+val],color=colors[i],label = val)
-               #ax[1].plot(snr['MJD'],snr['SNR_'+val+'_fake'],color=colors[i],label = val+'_fake',ls='--')
 
         ax[1].set_xlabel('MJD',fontsize = fontsize)
         ax[1].set_ylabel('SNR',fontsize = fontsize)
         ax[1].legend()
-        fig.canvas.flush_events()
-
-        #fig.savefig('Test_figs/'+fieldid+'_'+str(inum)+'.png')
-
-        if mjd_max - current_mjd != 0.:
-            ax[0].clear()
-            tot_label= []
-        
-        """
-        plt.pause(1)
-        plt.close()
-        
-        plt.draw()
-        plt.pause(1)
-        plt.close()
-        """
+        labs = [l.get_label() for l in tot_label_snr]
+        ax[1].legend(tot_label_snr, labs, ncol=1,loc='best',prop={'size':fontsize},frameon=False)
+        for i in range(2):
+            ax[i].tick_params(axis='x', labelsize=fontsize)
+            ax[i].tick_params(axis='y', labelsize=fontsize)

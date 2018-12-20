@@ -86,7 +86,7 @@ def run(config_filename):
         for (Ra,Dec,season) in np.unique(res[['fieldRA','fieldDec','season']]):
             idx = (res['fieldRA'] == Ra)&(res['fieldDec'] == Dec)&(res['season'] == season)
             sel = res[idx]
-            #Plot_SNR(Ra,Dec,season,band,sel,config,metric)
+            Plot_SNR(Ra,Dec,season,band,sel,config,metric)
     
         
     # Let us display the results
@@ -100,7 +100,7 @@ def run(config_filename):
     #mbg.plot()
     plt.show()
 
-def Plot_SNR(Ra,Dec,season,band,sel,config,metric):
+def Plot_SNR(Ra,Dec,season,band,sel,config,metric,draw_fakes = True):
       colors = ['b','r']
       fontsize = 15
 
@@ -108,13 +108,15 @@ def Plot_SNR(Ra,Dec,season,band,sel,config,metric):
       fig, ax = plt.subplots(ncols=1, nrows=1)
       fig.suptitle('Ra = '+str(np.round(Ra,2))+' Dec = '+str(np.round(Dec,2))+' \n '+band+' band - season '+str(int(season)),fontsize = fontsize)
 
-      #fake_obs = Get_Fake_Obs(sel,config,band)
-      #resb = metric[band].run(fake_obs[fake_obs['filter']==band])
+      if draw_fakes:
+          fake_obs = Get_Fake_Obs(sel,config,band)
+          resb = metric[band].run(fake_obs[fake_obs['filter']==band],seasons_=[1])
       sel.sort(order='MJD')
       
       for io, sim in enumerate(config['names_ref']):
           tot_label.append(ax.errorbar(sel['MJD'],sel['SNR_'+sim],ls='-',color=colors[io], label = sim))
-          #tot_label.append(ax.errorbar(resb['MJD'],resb['SNR_'+sim],ls='--',color = colors[io],label = sim+'_fake'))
+          if draw_fakes:
+              tot_label.append(ax.errorbar(resb['MJD'],resb['SNR_'+sim],ls='--',color = colors[io],label = sim+'_fake'))
       ax.set_xlabel('MJD [day]',fontsize = fontsize)
       ax.set_ylabel('Signal-To-Noise ratio',fontsize = fontsize)
       ax.tick_params(axis='x', labelsize=fontsize)
@@ -129,7 +131,7 @@ def Get_Fake_Obs(sel,config,band):
     
     m5_ref = dict(zip('grizy',[23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
 
-    cadence = np.mean(sel['Cadence'])
+    cadence = np.mean(sel['cadence'])
     mjd_min = np.mean(sel['MJD_min'])
     season_length = np.mean(sel['season_length'])
     Nvisits = np.median(sel['Nvisits'])
