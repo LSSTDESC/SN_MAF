@@ -22,6 +22,6 @@ SN_MAF is a framework for estimating MAF metrics for supernovae (SN). It can als
     - A description of the input yaml file is given [here](doc/yaml_cadence.md)
     - you may have to change the 'filename' parameter to the OpSim db name you would like to use as input.
     - output : a set of plot:
-      - ![alt text](doc/cadence_m5_r.png "Mean cadence vs mean m5 (5-sigma depth)")
-      - ![alt text](doc/zlim_r.png "redshift limit (zlim) histogram")
+      - Mean cadence vs mean m5 (5-sigma depth) ![alt text](doc/cadence_m5_r.png | width=100)
+      - redshift limit (zlim) histogram ![alt text](doc/zlim_r.png | width=100) 
 
