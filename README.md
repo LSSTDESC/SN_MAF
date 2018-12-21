@@ -19,5 +19,5 @@ SN_MAF is a framework for estimating MAF metrics for supernovae (SN). It can als
 
   - Running the Cadence metric
     - python SN_MAF/run_scripts/run_cadence_metric.py SN_MAF/input/param_cadence_metric.yaml
-    - A description of the input yaml file is given [a relative link](yaml_cadence.md)
+    - A description of the input yaml file is given [here](doc/yaml_cadence.md)
 
