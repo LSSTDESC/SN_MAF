@@ -25,4 +25,4 @@ SN_MAF is a framework for estimating MAF metrics for supernovae (SN). It can als
 | ![alt text](doc/cadence_m5_r.png | width=100) |
 |:--:| 
 | *Mean cadence vs mean m5 (5-sigma depth)* |
-      - redshift limit (zlim) histogram ![alt text](doc/zlim_r.png | width=100)
+      - ![alt text](doc/zlim_r.png | width=100)
