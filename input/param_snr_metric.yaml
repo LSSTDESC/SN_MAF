@@ -3,11 +3,11 @@ SN parameters:
    X1: -2.0        # stretch 
    Color: 0.2   #color
 Observations: 
-   filename: ../flatiron/maf_local/sims_maf_contrib/tutorials/baseline2018a.db  # Name of db obs file (full path)
+   filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
    season: [1] #season to simulate (-1 = all seasons)
-   bands: 'riz' #bands to consider
+   bands: 'r' #bands to consider
    #bands: 'i'
    z: 0.7
 Pixelisation:
