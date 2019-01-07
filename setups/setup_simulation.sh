@@ -1,21 +1,18 @@
 #!/bin/bash
 
-#setup lsst_sims
+location=$1
+script_loc=$2
 
-#source /global/common/software/lsst/cori-haswell-gcc/stack/setup_w_2018_13-sims_2_7_0.sh
-source /cvmfs/sw.lsst.eu/linux-x86_64/lsst_sims/sims_2_8_0/loadLSST.bash
-setup lsst_sims
+source ${PWD}/SN_MAF/setups/setup_metric.sh ${location} ${script_loc}
 
-export PYTHONPATH=${PWD}/SN_MAF/SN_Metrics:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_MAF/SN_Stackers:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_MAF/SN_Simulations:$PYTHONPATH
 
 thedir=${PWD}/lib/python3.6/site-packages/
 if [ ! -d ${PWD}/SN_Catalog_Simulations ]
 then
     echo "Seems that the simulation packages you need are not installed."
-    echo "Will do it for you."
+    echo "Will do it for you..."
     where='https://github.com/lsstdesc'
+    echo "...taking packages from "${where}
 
     for pack in SN_Catalog_Simulations SN_Utils
     do

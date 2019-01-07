@@ -9,7 +9,7 @@ import yaml
 from importlib import import_module
 import sqlite3
 import numpy as np
-from SN_Utils import Generate_Fake_Observations
+from SN_Cadence_Tools import Generate_Fake_Observations
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
