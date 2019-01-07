@@ -4,7 +4,8 @@ location=$1
 script_loc=$2
 
 declare -A arr
-arr['NERSC']='/global/common/software/lsst/cori-haswell-gcc/stack/setup_w_2018_13-sims_2_7_0.sh'
+#arr['NERSC']='/global/common/software/lsst/cori-haswell-gcc/stack/setup_w_2018_13-sims_2_7_0.sh'
+arr['NERSC']='/global/common/software/lsst/cori-haswell-gcc/stack/setup_w_2018_19-sims_2_8_0.sh'
 arr['CCIN2P3']='/cvmfs/sw.lsst.eu/linux-x86_64/lsst_sims/sims_2_8_0/loadLSST.bash'
 arr['mylaptop']='/cvmfs/sw.lsst.eu/linux-x86_64/lsst_sims/sims_2_8_0/loadLSST.bash'
 
