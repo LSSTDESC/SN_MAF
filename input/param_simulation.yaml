@@ -2,18 +2,18 @@ ProductionID: DD_baseline2018a
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
-       type : random #random or fixed
-       min : [-2.0,-0.2]
-       max : [2.0,0.2]
+       type : fixed #random or fixed
+       min : [-2.0,0.2]
+       max : [0.2,0.2]
        rate :  JLA
    z :              # redshift
-       type : random
+       type : uniform
        min : 0.01
        max : 0.5
        step: 0.05
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
-       type : random #uniform or random or unique
+       type : uniform #uniform or random or unique
        step : 1 # if uniform: step (in day) between Tmin(obs) and Tmax(obs)      
    min_rf_phase : -20.        # obs min phase (rest frame)
    max_rf_phase : 60.         # obs max phase (rest frame)
@@ -43,15 +43,16 @@ Simulator :
     name : SN_Fast          # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
     version : 1.0                     #version
+    Reference File: /pbs/throng/lsst/users/gris/SN_Metric/SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
 Host Parameters: None         # Host parameters
 Display_LC : #display during LC simulations
-   display: False
-   time: 10 #display during time (sec) before closing
+   display: True
+   time: 1 #display during time (sec) before closing
 Output:
     directory: Output_Simu
     save: True
 Multiprocessing:
-    nproc: 4
+    nproc: 1
 Metric: SN_MAF_Simulation
 Pixelisation:
     nside: 64

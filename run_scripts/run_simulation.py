@@ -52,7 +52,7 @@ def run(config_filename):
         slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
         
         # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
-        
+        print('alors condif',config)
         metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'])
         
         sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
