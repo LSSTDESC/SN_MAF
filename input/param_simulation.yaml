@@ -1,4 +1,4 @@
-ProductionID: DD_baseline2018a
+ProductionID: DD_baseline2018a_Fast
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
@@ -38,7 +38,7 @@ Observations:
    filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: 3 #season to simulate (-1 = all seasons)
+   season: -1 #season to simulate (-1 = all seasons)
 Simulator :
     name : SN_Fast          # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
@@ -46,13 +46,13 @@ Simulator :
     Reference File: /pbs/throng/lsst/users/gris/SN_Metric/SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
 Host Parameters: None         # Host parameters
 Display_LC : #display during LC simulations
-   display: True
+   display: False
    time: 1 #display during time (sec) before closing
 Output:
     directory: Output_Simu
-    save: True
+    save: False
 Multiprocessing:
-    nproc: 1
+    nproc: 5
 Metric: SN_MAF_Simulation
 Pixelisation:
     nside: 64

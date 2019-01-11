@@ -42,6 +42,7 @@ class SNMetric(BaseMetric):
         # this is for output
 
         save_status = config['Output']['save']
+        self.save_status = save_status
         outdir = config['Output']['directory']
         prodid = config['ProductionID']
         # sn parameters
@@ -79,4 +80,5 @@ class SNMetric(BaseMetric):
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
         self.simu(dataSlice,self.field_type,100,self.season)
+        
         return None

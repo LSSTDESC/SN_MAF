@@ -67,7 +67,8 @@ def run(config_filename):
                                                outDir=outDir, resultsDb=resultsDb)
         
         mbg.runAll()
-
+        if metric.save_status:
+            metric.simu.Finish()
     else:
         config_fake = yaml.load(open(config['Param_file']))
         fake_obs = Generate_Fake_Observations(config_fake).Observations
