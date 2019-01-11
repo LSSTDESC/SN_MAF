@@ -35,22 +35,23 @@ Instrument:
    atmos : True  #atmos
    aerosol : False  #aerosol
 Observations: 
-   filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
+   #filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
+   filename: /home/philippe/LSST/DB_Files/kraken_2026.db
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: -1 #season to simulate (-1 = all seasons)
+   season: 1 #season to simulate (-1 = all seasons)
 Simulator :
-    name : SN_Fast          # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
+    name : SN_Fast        # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
     version : 1.0                     #version
-    Reference File: /pbs/throng/lsst/users/gris/SN_Metric/SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
+    Reference File: SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
 Host Parameters: None         # Host parameters
 Display_LC : #display during LC simulations
    display: False
    time: 1 #display during time (sec) before closing
 Output:
     directory: Output_Simu
-    save: False
+    save: True
 Multiprocessing:
     nproc: 5
 Metric: SN_MAF_Simulation
