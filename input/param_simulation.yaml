@@ -13,7 +13,7 @@ SN parameters:
        step: 0.05
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
-       type : uniform #uniform or random or unique
+       type : unique #uniform or random or unique
        step : 1 # if uniform: step (in day) between Tmin(obs) and Tmax(obs)      
    min_rf_phase : -20.        # obs min phase (rest frame)
    max_rf_phase : 60.         # obs max phase (rest frame)
@@ -31,7 +31,7 @@ Instrument:
    name : LSST       #name of the telescope (internal)
    throughput_dir : LSST_THROUGHPUTS_BASELINE #dir of throughput
    atmos_dir : THROUGHPUTS_DIR   #dir of atmos
-   airmass : 1.1   #airmass value
+   airmass : 1.2   #airmass value
    atmos : True  #atmos
    aerosol : False  #aerosol
 Observations: 

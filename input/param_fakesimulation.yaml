@@ -38,7 +38,7 @@ Observations:
    filename: None  # Name of db obs file (full path)
    fieldtype: None #DD or WFD
    coadd: None # this is the coaddition per night
-   season: 0 #season to simulate (-1 = all seasons)
+   season: 1 #season to simulate (-1 = all seasons)
 Simulator :
     name : SN_Cosmo           # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
