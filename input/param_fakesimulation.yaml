@@ -8,9 +8,9 @@ SN parameters:
        rate :  JLA
    z :              # redshift
        type : uniform
-       min : 0.1
+       min : 0.01
        max : 0.9
-       step: 0.1
+       step: 0.01
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
        type : unique #uniform or random or unique
@@ -20,6 +20,7 @@ SN parameters:
    absmag : -19.0906          # peak abs mag
    band : bessellB             # band for absmag
    magsys : vega              # magsys for absmag
+   differential_flux: True
 Cosmology:
    Model : w0waCDM      # Cosmological model
    Omega_m : 0.30             # Omega_m

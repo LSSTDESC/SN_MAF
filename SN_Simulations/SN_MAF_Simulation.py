@@ -57,7 +57,7 @@ class SNMetric(BaseMetric):
         if  self.field_type == 'WFD':
             # in that case the survey area is the healpix area
             area = hp.nside2pixarea(config['Pixelisation']['nside'],degrees=True)
-        
+        print('iiiiiii',area)
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
                                   simu_config, display_lc,display_time,area,
