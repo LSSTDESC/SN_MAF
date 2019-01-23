@@ -1,12 +1,12 @@
 Ra: 0.0
 Dec: 0.0
 nseasons: 1 # number of seasons
-season_length: 200 #season_length (days)
+season_length: 160. #season_length (days)
 bands: ['g','r','i','z','y'] #bands to consider
-#Cadence: [1.,1.,1.,1.,1.] # Cadence[day] per band
-Cadence: [0.5,0.5,0.5,0.5,0.5] # Cadence[day] per band
+Cadence: [1.,1.,1.,1.,1.] # Cadence[day] per band
+#Cadence: [0.5,0.5,0.5,0.5,0.5] # Cadence[day] per band
 m5: [23.27,24.58,24.22,23.65,22.78,22.00] #5-sigma depth values
 Nvisits: [10,20,20,26,20]
 Exposure_Time: [30.,30.,30.,30.,30.]
 shift_days:  0.0069444 #in days: 10./(24.*60.)
-MJD_min: 100
+MJD_min: -40.

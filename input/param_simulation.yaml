@@ -13,7 +13,7 @@ SN parameters:
        step: 0.05
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
-       type : unique #uniform or random or unique
+       type : uniform #uniform or random or unique
        step : 1 # if uniform: step (in day) between Tmin(obs) and Tmax(obs)      
    min_rf_phase : -20.        # obs min phase (rest frame)
    max_rf_phase : 60.         # obs max phase (rest frame)
@@ -40,13 +40,13 @@ Observations:
    filename: /home/philippe/LSST/DB_Files/kraken_2026.db
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: 1 #season to simulate (-1 = all seasons)
+   season: -1 #season to simulate (-1 = all seasons)
 Simulator :
     name : SN_Fast        # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
     model : salt2-extended   # spectra model
     version : 1.0                     #version
     #Reference File: SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
-    Reference File: LC_Test.hdf5
+    Reference File: LC_Test_today.hdf5
 Host Parameters: None         # Host parameters
 Display_LC : #display during LC simulations
    display: False
