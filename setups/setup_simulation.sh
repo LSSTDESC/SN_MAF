@@ -3,18 +3,18 @@
 location=$1
 script_loc=$2
 
-source ${PWD}/SN_MAF/setups/setup_metric.sh ${location} ${script_loc}
+source ${PWD}/sn_maf/setups/setup_metric.sh ${location} ${script_loc}
 
 
 thedir=${PWD}/lib/python3.6/site-packages/
-if [ ! -d ${PWD}/SN_Catalog_Simulations ]
+if [ ! -d ${PWD}/sn_catalog_Simulations ]
 then
     echo "Seems that the simulation packages you need are not installed."
     echo "Will do it for you..."
     where='https://github.com/lsstdesc'
     echo "...taking packages from "${where}
 
-    for pack in SN_Catalog_Simulations SN_Utils
+    for pack in sn_catalog_simulations sn_utils
     do
 	echo 'Cloning' $pack
 	git clone $where/$pack.git
@@ -38,13 +38,13 @@ then
     fi
 # now update python path
 echo "updating python path"
-export PYTHONPATH=${PWD}/SN_Catalog_Simulations/SN_Simulation:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNCosmo:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNSim:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNAna:$PYTHONPATH
-export PYTHONPATH=${PWD}/SN_Catalog_Simulations/Sim_SNFast:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations/sn_simulation:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_sncosmo:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snsim:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snana:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snfast:$PYTHONPATH
 
-export PYTHONPATH=${PWD}/SN_Utils/Utils:$PYTHONPATH
-export SN_UTILS_DIR=${PWD}/SN_Utils
-export SALT2_DIR=${PWD}/SN_Utils/SALT2_Files
+export PYTHONPATH=${PWD}/sn_utils/utils:$PYTHONPATH
+export SN_UTILS_DIR=${PWD}/sn_utils
+export SALT2_DIR=${PWD}/sn_utils/SALT2_Files
 export PYTHONPATH=${thedir}:$PYTHONPATH  

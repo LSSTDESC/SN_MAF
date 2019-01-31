@@ -31,16 +31,16 @@ then
     echo 'Problem here. We do not know where you would like to run'
     echo 'and which setup (stack) script you would like to use' 
     echo 'Try the following command'
-    echo 'python SN_MAF/setups/setup_metric.sh MYENV full_path_to_release_stack'
+    echo 'python sn_maf/setups/setup_metric.sh MYENV full_path_to_release_stack'
     echo 'where the stack release should include the lsst_sim package'
 else
     thescript=${arr[$location]}
     source ${thescript}
     setup lsst_sims
 
-    export PYTHONPATH=${PWD}/SN_MAF/SN_Metrics:$PYTHONPATH
-    export PYTHONPATH=${PWD}/SN_MAF/SN_Stackers:$PYTHONPATH
-    export PYTHONPATH=${PWD}/SN_MAF/SN_Simulations:$PYTHONPATH
-    export PYTHONPATH=${PWD}/SN_MAF/SN_Tools:$PYTHONPATH
+    export PYTHONPATH=${PWD}/sn_maf/sn_metrics:$PYTHONPATH
+    export PYTHONPATH=${PWD}/sn_maf/sn_stackers:$PYTHONPATH
+    export PYTHONPATH=${PWD}/sn_maf/sn_simulations:$PYTHONPATH
+    export PYTHONPATH=${PWD}/sn_maf/sn_tools:$PYTHONPATH
     
 fi

@@ -53,5 +53,5 @@ Output:
     save: True
 Multiprocessing:
     nproc: 1
-Metric: SN_MAF_FakeSimulation
-Param_file: SN_MAF/input/Fake_cadence.yaml
+Metric: sn_maf_fakesimulation
+Param_file: sn_maf/input/Fake_cadence.yaml
