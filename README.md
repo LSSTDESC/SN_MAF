@@ -1,1 +1,1 @@
-# SN_MAF
+# sn_maf
