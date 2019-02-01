@@ -8,8 +8,9 @@ import yaml
 from importlib import import_module
 # import sqlite3
 import numpy as np
-from sn_cadence_tools import Reference_Data, Generate_Fake_Observations
-from scipy import interpolate
+from sn_cadence_tools import Reference_Data
+import healpy as hp
+import numpy.lib.recfunctions as rf
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -91,34 +92,65 @@ def run(config_filename):
     # can be superimposed
 
     # concatenate the results estimated per band
-    res = None
+    metricValues = {}
+    data_str = ['snr_obs', 'snr_fakes', 'detec_frac']
+
+    for dstr in data_str:
+        metricValues[dstr] = None
+
     for band, val in bdict.items():
-        print('ici band', band)
-        res_b = np.concatenate(val.metricValues[~val.metricValues.mask])
-        res_b = np.unique(res_b)
-        if res is None:
-            res = res_b
-        else:
-            res = np.concatenate((res, res_b))
+        data = val.metricValues[~val.metricValues.mask]
+        res = {}
+        for dstr in data_str:
+            res[dstr] = None
 
-    print('bands', np.unique(res['band']))
+        for val in data:
+            for dstr in data_str:
+                if res[dstr] is None:
+                    res[dstr] = val[dstr]
+                else:
+                    res[dstr] = np.concatenate((res[dstr], val[dstr]))
+
+        for dstr in data_str:
+            res[dstr] = np.unique(res[dstr])
+            if metricValues[dstr] is None:
+                metricValues[dstr] = res[dstr]
+            else:
+                metricValues[dstr] = np.concatenate(
+                    (metricValues[dstr], res[dstr]))
+
+    print('bands', np.unique(metricValues['snr_obs']['band']),
+          metricValues['snr_fakes'].dtype, metricValues['snr_fakes']['fieldRA'])
+
+    snr_obs = metricValues['snr_obs']
+    snr_fakes = metricValues['snr_fakes']
+    detec_frac = metricValues['detec_frac']
+
     """
-    for (Ra, Dec, season) in np.unique(res[['fieldRA', 'fieldDec', 'season']]):
-        idx = (res['fieldRA'] == Ra) & (
-            res['fieldDec'] == Dec) & (res['season'] == season)
-        sel = res[idx]
-        Plot_SNR(Ra, Dec, season, sel, config, metric, z)
+    for (Ra, Dec, season) in np.unique(snr_obs[['fieldRA', 'fieldDec', 'season']]):
+        idx = (snr_obs['fieldRA'] == Ra) & (
+            snr_obs['fieldDec'] == Dec) & (snr_obs['season'] == season)
+        sel_obs = snr_obs[idx]
+        idxb = (np.abs(snr_fakes['fieldRA'] - Ra) < 1.e-5) & (np.abs(
+            snr_fakes['fieldDec'] - Dec) < 1.e-5) & (snr_fakes['season'] == season)
+        sel_fakes = snr_fakes[idxb]
+        print('alors', Ra, Dec, np.unique(
+            sel_fakes[['fieldRA', 'fieldDec', 'season']]))
+        SNRPlot(Ra, Dec, season, sel_obs, sel_fakes, config, metric, z)
     """
 
-    frac_obs = Fraction_Observation(res, config, metric)
-    print(frac_obs)
+    print(detec_frac)
+    DetecFracPlot(detec_frac, config['Pixelisation']
+                  ['nside'], config['names_ref'])
+    # frac_obs = Fraction_Observation(res, config, metric)
+    # print(frac_obs)
     # mbg.writeAll()
     # mbg.plotAll(closefigs=False)
     # mbg.plot()
     plt.show()
 
 
-def Plot_SNR(Ra, Dec, season, data, config, metric, z, draw_fakes=True):
+def SNRPlot(Ra, Dec, season, data, data_fakes, config, metric, z, draw_fakes=True):
     """
     Signal-to-Ratio vs MJD plot
     SNR of  a SN with T0=MJD-10 days
@@ -143,6 +175,7 @@ def Plot_SNR(Ra, Dec, season, data, config, metric, z, draw_fakes=True):
     if n_bands >= 2:
         ncols = 2
         nrows = int(n_bands/2+(n_bands % 2))
+    print('alors', ncols, nrows)
     figa, axa = plt.subplots(ncols=ncols, nrows=nrows, figsize=(15, 10))
 
     figa.suptitle('Ra = '+str(np.round(Ra, 2))+' Dec = '+str(np.round(Dec, 2)) +
@@ -151,16 +184,17 @@ def Plot_SNR(Ra, Dec, season, data, config, metric, z, draw_fakes=True):
         tot_label = []
         idb = data['band'] == band
         sel = data[idb]
+        idb = data_fakes['band'] == band
+        sel_fakes = data_fakes[idb]
+        sel.sort(order='MJD')
+        sel_fakes.sort(order='MJD')
         ifig = int(ib/2)
         jfig = int(ib % 2)
 
-        ax = axa[ifig][jfig]
-        if draw_fakes:  # superimpose fake obs with a "perfect" cadence
-            fake_obs = Get_Fake_Obs(sel, config, band)  # simulate fakes
-            # run the same metric as simulated observations
-            resb = metric[band].run(
-                fake_obs[fake_obs['filter'] == band], seasons_=[1])
-        sel.sort(order='MJD')
+        if nrows > 1:
+            ax = axa[ifig][jfig]
+        else:
+            ax = axa[jfig]
 
         # Draw results
         for io, sim in enumerate(config['names_ref']):
@@ -168,9 +202,9 @@ def Plot_SNR(Ra, Dec, season, data, config, metric, z, draw_fakes=True):
                 sel['MJD'], sel['SNR_'+sim], ls='-', color=colors[io], label=sim))
             if draw_fakes:
                 tot_label.append(ax.errorbar(
-                    resb['MJD'], resb['SNR_'+sim], ls='--', color=colors[io], label=sim+'_fake'))
+                    sel_fakes['MJD'], sel_fakes['SNR_'+sim], ls='--', color=colors[io], label=sim+'_fake'))
 
-        if ifig == ncols-1:
+        if ifig == nrows-1:
             ax.set_xlabel('MJD [day]', fontsize=fontsize)
         if jfig == 0:
             ax.set_ylabel('Signal-To-Noise ratio', fontsize=fontsize)
@@ -188,69 +222,33 @@ def Plot_SNR(Ra, Dec, season, data, config, metric, z, draw_fakes=True):
                 fontsize=fontsize)
 
 
-def Fraction_Observation(data, config, metric):
-    """
-    Estimate the fraction of time (during a season)
-    a supernovae can be observed ie with
-    a minimal SNR (for each band)
-    """
-    r = []
-    for (ra, dec, season) in np.unique(data[['fieldRA', 'fieldDec', 'season']]):
-        idx = (data['fieldRA'] == ra) & (
-            data['fieldDec'] == dec) & (data['season'] == season)
-        sela = data[idx]
-        # produce fake observations
-        fake_obs = Get_Fake_Obs(sel, config, band)  # simulate fakes
-        # run the same metric as simulated observations
-        resb = metric[band].run(
-            fake_obs[fake_obs['filter'] == band], seasons_=[1])
-        resb.sort(order='MJD')
-        sel.sort(order='MJD')
-        r = [ra, dec, season, band]
-        names = ['Ra', 'Dec', 'season', 'band']
-        for sim in config['names_ref']:
-            fakes = interpolate.interp1d(resb['MJD'], resb['SNR_'+sim])
-            obs = interpolate.interp1d(sel['MJD'], sel['SNR_'+sim])
-            mjd_min = np.max([np.min(sel['MJD']), np.min(resb['MJD'])])
-            mjd_max = np.min([np.max(sel['MJD']), np.max(resb['MJD'])])
-            mjd = np.arange(mjd_min, mjd_max, 1.)
-            print(fakes(mjd))
-            print(obs(mjd))
-            diff_res = obs(mjd)-fakes(mjd)
-            idx = diff_res >= 0
-            print(len(diff_res[idx]), len(diff_res[idx])/len(diff_res))
-            r += [len(diff_res[idx])/len(diff_res)]
-            names += ['frac_obs_'+sim]
+def DetecFracPlot(data, nside, names_ref):
 
-        return np.rec.fromrecords(r, names=names)
+    data_heal = GetHealpix(data, nside)
+    npix = hp.nside2npix(nside)
+    print(data_heal)
+    for band, season in np.unique(data_heal[['band', 'season']]):
+        idx = (data_heal['band'] == band) & (data_heal['season'] == season)
+        sel = data_heal[idx]
+        for sim in names_ref:
+            hpxmap = np.zeros(npix, dtype=np.float)
+            hpxmap[sel['healpixID']] += sel['frac_obs_'+sim]
+            cmap = plt.cm.jet
+            cmap.set_under('w')
+            # remove max=200 and norm='hist' to get the DDFs
+            hp.mollview(hpxmap, min=0, max=1., cmap=cmap, title=band)
+
+    plt.show()
 
 
-def Get_Fake_Obs(sel, config, band):
-    """
-    Simulation of fake observations
-    Needed information (cadence, m5, mjd, season length, Nvisits ...) are
-    extracted from simulations
-    """
+def GetHealpix(data, nside):
 
-    config_fake = yaml.load(open(config['Fake_file']))
-    # m5_ref = dict(zip('grizy', [23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
-    cadence = np.mean(sel['cadence'])
-    mjd_min = np.mean(sel['MJD_min'])
-    season_length = np.mean(sel['season_length'])
-    Nvisits = np.median(sel['Nvisits'])
-    m5 = np.median(sel['m5'])
-    Tvisit = 30.
-    # cadence = 3.
-
-    config_fake['bands'] = [band]
-    config_fake['Cadence'] = [cadence]
-    config_fake['MJD_min'] = mjd_min
-    config_fake['season_length'] = season_length
-    config_fake['Nvisits'] = [Nvisits]
-    m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
-    config_fake['m5'] = [m5_nocoadd]
-    fake_obs = Generate_Fake_Observations(config_fake).Observations
-    return fake_obs
+    res = data.copy()
+    npix = hp.nside2npix(nside)
+    table = hp.ang2vec(data['fieldRA'], data['fieldDec'], lonlat=True)
+    healpixs = hp.vec2pix(nside, table[:, 0], table[:, 1], table[:, 2])
+    res = rf.append_fields(res, 'healpixID', healpixs)
+    return res
 
 
 def main(args):

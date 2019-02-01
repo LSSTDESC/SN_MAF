@@ -8,7 +8,7 @@ Observations:
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
    season: [1,2] #season to simulate (-1 = all seasons)
-   bands: 'r' #bands to consider
+   bands: 'ri' #bands to consider
    #bands: 'i'
    z: 0.7
 Pixelisation:

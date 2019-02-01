@@ -6,6 +6,7 @@ import numpy.lib.recfunctions as rf
 import multiprocessing
 from sn_cadence_tools import Generate_Fake_Observations
 import yaml
+from scipy import interpolate
 
 
 class SNMetric(BaseMetric):
@@ -68,7 +69,7 @@ class SNMetric(BaseMetric):
 
         self.display = config['Display_Processing']
 
-    def run(self, dataSlice, seasons_=None, slicePoint=None):
+    def run(self, dataSlice,  slicePoint=None):
 
         goodFilters = np.in1d(dataSlice['filter'], self.filterNames)
         dataSlice = dataSlice[goodFilters]
@@ -77,40 +78,29 @@ class SNMetric(BaseMetric):
         dataSlice.sort(order=self.mjdCol)
 
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
-        #r = []
+
         self.shift = 10.  # SN DayMax: current date - shift days
 
         seasons = self.season
-        if seasons_ is not None:
-            seasons = seasons_
 
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
 
-        proc_season = self.Ana_Season(dataSlice, seasons)
-        proc_fakes = self.SNR_Fakes(dataSlice, seasons)
-        """
-        if proc_season is not None:
-            r.append(proc_season)
-        """
-        return proc_season
+        snr_obs = self.SNR_Season(dataSlice, seasons)
+        snr_fakes = self.SNR_Fakes(dataSlice, seasons)
+        detect_frac = self.Detecting_Fraction(snr_obs, snr_fakes)
 
-    def Ana_Season(self, dataSlice, seasons, j=-1, output_q=None):
+        return {'snr_obs': snr_obs, 'snr_fakes': snr_fakes, 'detec_frac': detect_frac}
+
+    def SNR_Season(self, dataSlice, seasons, j=-1, output_q=None):
 
         sel = None
-        """
-        periods = {}
-        cadence = {}
-        season_length = {}
-        mjd_min = {}
-        """
         rv = []
         for season in seasons:
             idx = (dataSlice[self.seasonCol] == season)
             slice_sel = dataSlice[idx]
             slice_sel.sort(order=self.mjdCol)
             mjds_season = slice_sel[self.mjdCol]
-            #periods[season]= (np.min(mjds_season),np.max(mjds_season))
             cadence = np.mean(mjds_season[1:]-mjds_season[:-1])
             mjd_min = np.min(mjds_season)
             mjd_max = np.max(mjds_season)
@@ -121,6 +111,7 @@ class SNMetric(BaseMetric):
             else:
                 sel = np.concatenate((sel, dataSlice[idx]))
 
+        #print('ici', rv)
         self.info_season = np.rec.fromrecords(
             rv, names=['season', 'cadence', 'season_length', 'MJD_min', 'MJD_max'])
 
@@ -156,6 +147,7 @@ class SNMetric(BaseMetric):
         fluxes_tot, snr = self.SNR(time_for_lc, m5_vals, flag, season_vals)
 
         _, idx = np.unique(snr['season'], return_inverse=True)
+        #print('hh', np.unique(snr['season']), idx)
         infos = self.info_season[idx]
         vars_info = ['cadence', 'season_length', 'MJD_min']
         snr = rf.append_fields(
@@ -171,6 +163,7 @@ class SNMetric(BaseMetric):
         global_info = np.rec.fromrecords(global_info, names=names)
         snr = rf.append_fields(
             snr, names, [global_info[name] for name in names])
+
         if self.display:
             self.Plot(fluxes_tot, mjd_vals, flag, snr, T0_lc, dates)
 
@@ -207,40 +200,55 @@ class SNMetric(BaseMetric):
 
     def SNR_Fakes(self, dataSlice, seasons):
         """
-        Generate fake observations according to data
-        Estimate SNR in the same way as for observations
+        Estimate SNR for fake observations
+        in the same way as for observations (using SNR_Season)
         """
-        config_fake = yaml.load(open(self.config['Fake_file']))
-        # m5_ref = dict(zip('grizy', [23.27, 24.58, 24.22, 23.65, 22.78, 22.0]))
-
+        # generate fake observations
+        fake_obs = None
         for season in seasons:
             idx = (dataSlice[self.seasonCol] == season)
-            slice_sel = dataSlice[idx]
-            band = np.unique(slice_sel[self.filterCol])[0]
-            mjds_season = slice_sel[self.mjdCol]
-            #periods[season]= (np.min(mjds_season),np.max(mjds_season))
-            cadence = np.mean(mjds_season[1:]-mjds_season[:-1])
-            mjd_min = np.min(mjds_season)
-            mjd_max = np.max(mjds_season)
-            season_length = mjd_max-mjd_min
-            Nvisits = np.median(slice_sel[self.nexpCol])
-            m5 = np.median(slice_sel[self.m5Col])
-            Tvisit = 30.
+            band = np.unique(dataSlice[idx][self.filterCol])[0]
+            if fake_obs is None:
+                fake_obs = self.Gen_Fakes(dataSlice[idx], band, season)
+            else:
+                fake_obs = np.concatenate(
+                    (fake_obs, self.Gen_Fakes(dataSlice[idx], band, season)))
 
-            config_fake['bands'] = [band]
-            config_fake['Cadence'] = [cadence]
-            config_fake['MJD_min'] = mjd_min
-            config_fake['season_length'] = season_length
-            config_fake['Nvisits'] = [Nvisits]
-            m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
-            config_fake['m5'] = [m5_nocoadd]
-            fake_obs = Generate_Fake_Observations(config_fake).Observations
-            snr_fakes = self.Ana_Season(
-                fake_obs[fake_obs['filter'] == band], seasons=[1])
-            snr_fakes['season'] = [season]*len(snr_fakes)
-            print(snr_fakes['season'])
+        # estimate SNR vs MJD
+        snr_fakes = self.SNR_Season(
+            fake_obs[fake_obs['filter'] == band], seasons=seasons)
 
-        print(ref)
+        return snr_fakes
+
+    def Gen_Fakes(self, slice_sel, band, season):
+        """
+        Generate fake observations
+        according to observing values extracted from simulations
+        """
+        fieldRA = np.mean(slice_sel[self.RaCol])
+        fieldDec = np.mean(slice_sel[self.DecCol])
+        mjds_season = slice_sel[self.mjdCol]
+        cadence = np.mean(mjds_season[1:]-mjds_season[:-1])
+        mjd_min = np.min(mjds_season)
+        mjd_max = np.max(mjds_season)
+        season_length = mjd_max-mjd_min
+        Nvisits = np.median(slice_sel[self.nexpCol])
+        m5 = np.median(slice_sel[self.m5Col])
+        Tvisit = 30.
+
+        config_fake = yaml.load(open(self.config['Fake_file']))
+        config_fake['Ra'] = fieldRA
+        config_fake['Dec'] = fieldDec
+        config_fake['bands'] = [band]
+        config_fake['Cadence'] = [cadence]
+        config_fake['MJD_min'] = mjd_min
+        config_fake['season_length'] = season_length
+        config_fake['Nvisits'] = [Nvisits]
+        m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
+        config_fake['m5'] = [m5_nocoadd]
+        fake_obs_season = Generate_Fake_Observations(config_fake).Observations
+        fake_obs_season['season'] = [season]*len(fake_obs_season)
+        return fake_obs_season
 
     def Plot(self, fluxes, mjd, flag, snr, T0_lc, dates):
 
@@ -270,7 +278,7 @@ class SNMetric(BaseMetric):
             for ib, name in enumerate(fluxes_ma.keys()):
                 tot_label.append(ax[0].errorbar(
                     mjd_ma[j], fluxes_ma[name][j], marker='s', color=colors[ib], ls=myls[ib], label=name))
-                # tot_label_snr.append(ax[1].errorbar(snr['MJD'][:j],snr['SNR_'+name][:j],color=colors[ib],label=name,ls='None',marker='.',ms=3.))
+
                 tot_label_snr.append(ax[1].errorbar(
                     snr['MJD'][:j], snr['SNR_'+name][:j], color=colors[ib], label=name))
                 min_flux.append(np.min(fluxes_ma[name][j]))
@@ -301,3 +309,43 @@ class SNMetric(BaseMetric):
         for i in range(2):
             ax[i].tick_params(axis='x', labelsize=fontsize)
             ax[i].tick_params(axis='y', labelsize=fontsize)
+
+    def Detecting_Fraction(self, snr_obs, snr_fakes):
+        """
+        Estimate the time fraction (per season) for which 
+        snr_obs > snr_fakes
+        This would correspond to a fraction of detectability.
+        For regular cadences one should get a result close to 1
+        """
+
+        ra = np.mean(snr_obs['fieldRA'])
+        dec = np.mean(snr_obs['fieldDec'])
+        band = np.unique(snr_obs['band'])[0]
+
+        rtot = []
+        for season in np.unique(snr_obs['season']):
+            idx = snr_obs['season'] == season
+            sel_obs = snr_obs[idx]
+            idxb = snr_fakes['season'] == season
+            sel_fakes = snr_fakes[idxb]
+
+            sel_obs.sort(order='MJD')
+            sel_fakes.sort(order='MJD')
+            r = [ra, dec, season, band]
+            names = [self.RaCol, self.DecCol, 'season', 'band']
+            for sim in self.config['names_ref']:
+                fakes = interpolate.interp1d(
+                    sel_fakes['MJD'], sel_fakes['SNR_'+sim])
+                obs = interpolate.interp1d(sel_obs['MJD'], sel_obs['SNR_'+sim])
+                mjd_min = np.max(
+                    [np.min(sel_obs['MJD']), np.min(sel_fakes['MJD'])])
+                mjd_max = np.min(
+                    [np.max(sel_obs['MJD']), np.max(sel_fakes['MJD'])])
+                mjd = np.arange(mjd_min, mjd_max, 1.)
+
+                diff_res = obs(mjd)-fakes(mjd)
+                idx = diff_res >= 0
+                r += [len(diff_res[idx])/len(diff_res)]
+                names += ['frac_obs_'+sim]
+            rtot.append(tuple(r))
+        return np.rec.fromrecords(rtot, names=names)
