@@ -62,7 +62,6 @@ class SNMetric(BaseMetric):
             # in that case the survey area is the healpix area
             area = hp.nside2pixarea(
                 config['Pixelisation']['nside'], degrees=True)
-        print('iiiiiii', area)
         self.simu = SN_Simulation(cosmo_par, tel_par, sn_parameters,
                                   save_status, outdir, prodid,
                                   simu_config, display_lc, display_time, area,
@@ -75,7 +74,6 @@ class SNMetric(BaseMetric):
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
 
-        # print("attention",type(dataSlice),dataSlice.dtype)
         goodFilters = np.in1d(dataSlice['filter'], self.filterNames)
         dataSlice = dataSlice[goodFilters]
         if dataSlice.size == 0:
