@@ -6,6 +6,7 @@ import matplotlib._cntr as cntr
 import h5py
 from astropy.table import Table, vstack
 from scipy.interpolate import griddata
+from sn_utils.utils.sn_telescope import Telescope
 
 
 class Lims:
@@ -320,6 +321,7 @@ class TemplateData(object):
         """
         self.fi = filename
         self.refdata = self.Stack()
+        self.telescope = Telescope(airmass=1.1)
 
     def Stack(self):
 
@@ -337,7 +339,7 @@ class TemplateData(object):
 
         return tab_tot
 
-    def EstimateValues(self, band, mjd_obs, z, daymax, method='cubic'):
+    def EstimateValues(self, band, mjd_obs, m5_obs, exptime_obs, z, daymax, method='cubic'):
 
         idx = self.refdata['band'] == band
         lc_ref = self.refdata[idx]
@@ -346,7 +348,8 @@ class TemplateData(object):
         z_ref = lc_ref['z']
         flux_ref = lc_ref['flux']
         fluxerr_ref = lc_ref['fluxerr']
-
+        gamma_ref = lc_ref['gamma'][0]
+        m5_ref = np.unique(lc_ref['m5'])[0]
         # observations (mjd, daymax, z) where to get the fluxes
         phase_obs = mjd_obs-daymax[:, np.newaxis]
         phase_obs = phase_obs/(1.+z[:, np.newaxis])  # phases of LC points
@@ -357,4 +360,28 @@ class TemplateData(object):
         fluxerr = griddata(
             (phase_ref, z_ref), fluxerr_ref, (phase_obs, z_arr), method=method, fill_value=0.)
 
-        return flux, fluxerr
+        fluxerr_corr = self.FluxErrCorr(
+            flux, m5_obs, exptime_obs, gamma_ref, m5_ref)
+
+        return flux, fluxerr/fluxerr_corr
+
+    def FluxErrCorr(self, fluxes_obs, m5_obs, exptime_obs, gamma_ref, m5_ref):
+
+        # Correct fluxes_err (m5 in generation probably different from m5 obs)
+        gamma_obs = self.telescope.gamma(
+            m5_obs, [band]*len(m5Col), exptime_obs)
+        mag_obs = -2.5*np.log10(fluxes_obs/3631.)
+
+        m5 = np.asarray([m5_ref]*len(m5_obs))
+        gammaref = np.asarray([gamma_ref]*len(m5_obs))
+        srand_ref = self.srand(
+            np.tile(gammaref, (len(mag_obs), 1)), mag_obs, np.tile(m5, (len(mag_obs), 1)))
+        srand_obs = self.srand(np.tile(gamma_obs, (len(mag_obs), 1)), mag_obs, np.tile(
+            m5_obs, (len(mag_obs), 1)))
+
+        correct_m5 = srand_ref/srand_obs
+        return correct_m5
+
+    def srand(self, gamma, mag, m5):
+        x = 10**(0.4*(mag-m5))
+        return np.sqrt((0.04-gamma)*x+gamma*x**2)

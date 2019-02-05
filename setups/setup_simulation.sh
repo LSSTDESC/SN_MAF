@@ -38,13 +38,15 @@ then
     fi
 # now update python path
 echo "updating python path"
-export PYTHONPATH=${PWD}/sn_catalog_simulations/sn_simulation:$PYTHONPATH
-export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_sncosmo:$PYTHONPATH
-export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snsim:$PYTHONPATH
-export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snana:$PYTHONPATH
-export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snfast:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_catalog_simulations:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_catalog_simulations/sn_simulation:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_sncosmo:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snsim:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snana:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_catalog_simulations/sim_snfast:$PYTHONPATH
 
-export PYTHONPATH=${PWD}/sn_utils/utils:$PYTHONPATH
+#export PYTHONPATH=${PWD}/sn_utils/utils:$PYTHONPATH
+export PYTHONPATH=${PWD}/sn_utils:$PYTHONPATH
 export SN_UTILS_DIR=${PWD}/sn_utils
 export SALT2_DIR=${PWD}/sn_utils/SALT2_Files
 export PYTHONPATH=${thedir}:$PYTHONPATH  

@@ -42,6 +42,8 @@ else
     export PYTHONPATH=${PWD}/sn_maf/sn_stackers:$PYTHONPATH
     export PYTHONPATH=${PWD}/sn_maf/sn_simulations:$PYTHONPATH
     export PYTHONPATH=${PWD}/sn_maf/sn_tools:$PYTHONPATH
+    export PYTHONPATH=${PWD}/sn_utils:$PYTHONPATH
+
     #checking whether hdf5 is accessible localy or not
     thedir=${PWD}/lib/python3.6/site-packages/
     lib='h5py'
