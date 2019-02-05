@@ -9,20 +9,22 @@ import yaml
 from importlib import import_module
 import sqlite3
 import numpy as np
-from SN_Cadence_Tools import Generate_Fake_Observations
+from sn_maf.sn_tools.sn_cadence_tools import Generate_Fake_Observations
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
 parser.add_argument('config_filename',
                     help='Configuration file in YAML format.')
+
+
 def run(config_filename):
     # YAML input file.
     config = yaml.load(open(config_filename))
-    #print(config)
-    outDir ='Test' # this is for MAF
+    # print(config)
+    outDir = 'Test'  # this is for MAF
 
-    # grab the db filename from yaml input file 
-    dbFile=config['Observations']['filename']
+    # grab the db filename from yaml input file
+    dbFile = config['Observations']['filename']
 
     """
     conn = sqlite3.connect(dbFile)
@@ -45,27 +47,28 @@ def run(config_filename):
         opsimdb = db.OpsimDatabase(dbFile)
         version = opsimdb.opsimVersion
         propinfo, proptags = opsimdb.fetchPropInfo()
-        print('proptags and propinfo',proptags,propinfo)
-        
+        print('proptags and propinfo', proptags, propinfo)
+
         # grab the fieldtype (DD or WFD) from yaml input file
         fieldtype = config['Observations']['fieldtype']
         slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
-        
+
         # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
-        print('alors condif',config)
-        metric=module.SNMetric(config=config,coadd=config['Observations']['coadd'])
-        
+        print('alors condif', config)
+        metric = module.SNMetric(
+            config=config, coadd=config['Observations']['coadd'])
+
         sqlconstraint = opsimdb.createSQLWhere(fieldtype, proptags)
-    
+
         mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
-        
-        mbD = {0:mb}
-        
+
+        mbD = {0: mb}
+
         resultsDb = db.ResultsDb(outDir=outDir)
-        
-        mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
-                                               outDir=outDir, resultsDb=resultsDb)
-        
+
+        mbg = metricBundles.MetricBundleGroup(mbD, opsimdb,
+                                              outDir=outDir, resultsDb=resultsDb)
+
         mbg.runAll()
         if metric.save_status:
             metric.simu.Finish()
@@ -74,13 +77,13 @@ def run(config_filename):
         fake_obs = Generate_Fake_Observations(config_fake).Observations
 
         print(fake_obs)
-        metric=module.SNMetric(config=config)
+        metric = module.SNMetric(config=config)
         metric.run(fake_obs)
-        
-    #mbg.plotAll(closefigs=False)
-    #plt.show()
 
-    
+    # mbg.plotAll(closefigs=False)
+    # plt.show()
+
+
 def main(args):
     print('running')
     time_ref = time.time()

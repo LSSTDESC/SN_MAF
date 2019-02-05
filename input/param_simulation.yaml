@@ -1,4 +1,4 @@
-ProductionID: DD_baseline2018a_Fast
+ProductionID: DD_baseline2018a_Cosmo
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
@@ -40,9 +40,9 @@ Observations:
    filename: /home/philippe/LSST/DB_Files/kraken_2026.db
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: -1 #season to simulate (-1 = all seasons)
+   season: [1] #season to simulate (-1 = all seasons)
 Simulator :
-    name : SN_Fast        # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
+    name : sn_catalog_simulations.sim_sncosmo.sn_cosmo        # Simulator name: sn_cosmo,sn_sim,sn_ana, sn_fast
     model : salt2-extended   # spectra model
     version : 1.0                     #version
     #Reference File: SN_MAF/Reference_Files/LC_Ref_-2.0_0.2.hdf5
@@ -56,6 +56,6 @@ Output:
     save: True
 Multiprocessing:
     nproc: 5
-Metric: sn_maf_simulation
+Metric: sn_maf.sn_simulations.sn_maf_simulation
 Pixelisation:
     nside: 64
