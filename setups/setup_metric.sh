@@ -42,5 +42,16 @@ else
     export PYTHONPATH=${PWD}/sn_maf/sn_stackers:$PYTHONPATH
     export PYTHONPATH=${PWD}/sn_maf/sn_simulations:$PYTHONPATH
     export PYTHONPATH=${PWD}/sn_maf/sn_tools:$PYTHONPATH
-    
+    #checking whether hdf5 is accessible localy or not
+    thedir=${PWD}/lib/python3.6/site-packages/
+    lib='h5py'
+    echo $thedir
+    if [ -d ${thedir}$lib ]
+    then
+	echo $lib 'already installed -> updating PYTHONPATH'
+    else
+	echo $lib 'not installed -> installing with pip'
+	pip install --prefix=${PWD} ${lib}==2.7.1
+    fi
+    export PYTHONPATH=${thedir}:$PYTHONPATH
 fi
