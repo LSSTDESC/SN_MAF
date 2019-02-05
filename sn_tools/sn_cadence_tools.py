@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy.lib.recfunctions as rf
 import matplotlib._cntr as cntr
 import h5py
-from astropy.table import Table, vstack
-from scipy.interpolate import griddata
+from astropy.table import Table, Column, vstack
+from scipy.interpolate import griddata, interp2d, CloughTocher2DInterpolator
 from sn_utils.utils.sn_telescope import Telescope
 
 
@@ -31,7 +31,7 @@ class Lims:
         lims = {}
         # print(tab.dtype)
         for z in np.unique(tab['z']):
-            #lims[z] = {}
+            # lims[z] = {}
             idx = (tab['z'] == z) & (tab['band'] == 'LSST::'+band)
             idx &= (tab['flux_e'] > 0.)
             sel = tab[idx]
@@ -95,8 +95,9 @@ class Lims:
                         points_values = np.concatenate((points_values, res))
             self.Points_Ref.append(points_values)
             """
-            print('finally',restot)      
-            f = interpolate.interp2d(restot['m5'], restot['cadence'], restot['z'], kind='linear')
+            print('finally',restot)
+            f = interpolate.interp2d(
+                restot['m5'], restot['cadence'], restot['z'], kind='linear')
             self.Interpolate.append(f)
             """
         plt.close(figa)  # do not display
@@ -242,14 +243,14 @@ class Reference_Data:
 
 
 class Generate_Fake_Observations:
-    """ Class to generate Fake observations 
+    """ Class to generate Fake observations
     Input
     ---------
     parameter file (filter, cadence, m5,Nseasons, ...)
     Production: Observations
     ---------
     recordarray of observations:
-    MJD, Ra, Dec, band,m5,Nexp, ExpTime, Season 
+    MJD, Ra, Dec, band,m5,Nexp, ExpTime, Season
     """
 
     def __init__(self, config,
@@ -257,7 +258,7 @@ class Generate_Fake_Observations:
                  DecCol='fieldDec', filterCol='filter', m5Col='fiveSigmaDepth',
                  exptimeCol='visitExposureTime', nexpCol='numExposures', seasonCol='season'):
 
-        #config = yaml.load(open(config_filename))
+        # config = yaml.load(open(config_filename))
         self.mjdCol = mjdCol
         self.m5Col = m5Col
         self.filterCol = filterCol
@@ -313,15 +314,51 @@ class Generate_Fake_Observations:
 
 class TemplateData(object):
     """
-    class to load template LC 
+    class to load template LC
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, band):
         """
         """
         self.fi = filename
         self.refdata = self.Stack()
         self.telescope = Telescope(airmass=1.1)
+        self.blue_cutoff = 300.
+        self.red_cutoff = 800.
+        self.param_Fisher = ['X0', 'X1', 'Color']
+        self.method = 'cubic'
+
+        self.band = band
+        idx = self.refdata['band'] == band
+        lc_ref = self.refdata[idx]
+        # load reference values (only once)
+        phase_ref = lc_ref['phase']
+        z_ref = lc_ref['z']
+        flux_ref = lc_ref['flux']
+        fluxerr_ref = lc_ref['fluxerr']
+        self.gamma_ref = lc_ref['gamma'][0]
+        self.m5_ref = np.unique(lc_ref['m5'])[0]
+        self.dflux_interp = {}
+        self.flux_interp = CloughTocher2DInterpolator(
+            (phase_ref, z_ref), flux_ref, fill_value=1.e-5)
+        self.fluxerr_interp = CloughTocher2DInterpolator(
+            (phase_ref, z_ref), fluxerr_ref, fill_value=1.e-8)
+        for val in self.param_Fisher:
+            dflux = lc_ref['d'+val]
+            self.dflux_interp[val] = CloughTocher2DInterpolator(
+                (phase_ref, z_ref), dflux, fill_value=1.e-8)
+            """
+            dFlux[val] = griddata((phase, z), dflux, (phase_obs, yi_arr),
+                                  method=self.method, fill_value=0.)
+            """
+        # this is to convert mag to flux in e per sec
+        self.mag_to_flux_e_sec = {}
+        mag_range = np.arange(14., 32., 0.1)
+        for band in 'grizy':
+            fluxes_e_sec = self.telescope.mag_to_flux_e_sec(
+                mag_range, [band]*len(mag_range), [30]*len(mag_range))
+            self.mag_to_flux_e_sec[band] = interpolate.interp1d(
+                mag_range, fluxes_e_sec[:, 1], fill_value=0., bounds_error=False)
 
     def Stack(self):
 
@@ -339,49 +376,162 @@ class TemplateData(object):
 
         return tab_tot
 
-    def EstimateValues(self, band, mjd_obs, m5_obs, exptime_obs, z, daymax, method='cubic'):
+    def Fluxes(self, mjd_obs, param):
 
-        idx = self.refdata['band'] == band
-        lc_ref = self.refdata[idx]
+        z = param['z']
+        daymax = param['DayMax']
 
-        phase_ref = lc_ref['phase']
-        z_ref = lc_ref['z']
-        flux_ref = lc_ref['flux']
-        fluxerr_ref = lc_ref['fluxerr']
-        gamma_ref = lc_ref['gamma'][0]
-        m5_ref = np.unique(lc_ref['m5'])[0]
         # observations (mjd, daymax, z) where to get the fluxes
         phase_obs = mjd_obs-daymax[:, np.newaxis]
         phase_obs = phase_obs/(1.+z[:, np.newaxis])  # phases of LC points
         z_arr = np.ones_like(phase_obs)*z[:, np.newaxis]
 
-        flux = griddata((phase_ref, z_ref), flux_ref, (phase_obs, z_arr),
-                        method=method, fill_value=0.)
-        fluxerr = griddata(
-            (phase_ref, z_ref), fluxerr_ref, (phase_obs, z_arr), method=method, fill_value=0.)
+        flux = self.flux_interp((phase_obs, z_arr))
 
+        return flux
+
+    def Simulation(self, mjd_obs, m5_obs, exptime_obs, param):
+
+        z = param['z']
+        daymax = param['DayMax']
+
+        # observations (mjd, daymax, z) where to get the fluxes
+        phase_obs = mjd_obs-daymax[:, np.newaxis]
+        phase_obs = phase_obs/(1.+z[:, np.newaxis])  # phases of LC points
+        z_arr = np.ones_like(phase_obs)*z[:, np.newaxis]
+
+        flux = self.flux_interp((phase_obs, z_arr))
+        fluxerr = self.fluxerr_interp((phase_obs, z_arr))
+
+        flux[flux <= 0] = 1.e-5
+        """
         fluxerr_corr = self.FluxErrCorr(
-            flux, m5_obs, exptime_obs, gamma_ref, m5_ref)
-
-        return flux, fluxerr/fluxerr_corr
+            flux, m5_obs, exptime_obs, self.gamma_ref, self.m5_ref)
+        
+        fluxerr /= fluxerr_corr
+        """
+        tab = self.SelectSave(param, flux, fluxerr,
+                              phase_obs, mjd_obs)
+        return tab
 
     def FluxErrCorr(self, fluxes_obs, m5_obs, exptime_obs, gamma_ref, m5_ref):
 
         # Correct fluxes_err (m5 in generation probably different from m5 obs)
         gamma_obs = self.telescope.gamma(
-            m5_obs, [band]*len(m5Col), exptime_obs)
+            m5_obs, [self.band]*len(m5_obs), exptime_obs)
         mag_obs = -2.5*np.log10(fluxes_obs/3631.)
 
+        gamma_tile = np.tile(gamma_obs, (len(mag_obs), 1))
+        m5_tile = np.tile(m5_obs, (len(mag_obs), 1))
+        srand_obs = self.Srand(gamma_tile, mag_obs, m5_tile)
+
+        # srand_obs = self.srand(gamma_obs, mag_obs, m5_obs)
+        # print('yes', band, m5_ref, gamma_ref, gamma_obs, mag_obs, srand_obs)
+
         m5 = np.asarray([m5_ref]*len(m5_obs))
-        gammaref = np.asarray([gamma_ref]*len(m5_obs))
-        srand_ref = self.srand(
-            np.tile(gammaref, (len(mag_obs), 1)), mag_obs, np.tile(m5, (len(mag_obs), 1)))
-        srand_obs = self.srand(np.tile(gamma_obs, (len(mag_obs), 1)), mag_obs, np.tile(
-            m5_obs, (len(mag_obs), 1)))
+        gamma = np.asarray([gamma_ref]*len(m5_obs))
+        srand_ref = self.Srand(
+            np.tile(gamma, (len(mag_obs), 1)), mag_obs, np.tile(m5, (len(mag_obs), 1)))
 
         correct_m5 = srand_ref/srand_obs
         return correct_m5
 
-    def srand(self, gamma, mag, m5):
+    def Srand(self, gamma, mag, m5):
         x = 10**(0.4*(mag-m5))
         return np.sqrt((0.04-gamma)*x+gamma*x**2)
+
+    def FisherValues(self, param, phase_obs, fluxerr_obs):
+        """
+        idx = self.refdata['band'] == band
+        lc_ref = self.refdata[idx]
+        phase = lc_ref['phase']
+        z = lc_ref['z']
+        """
+        yi_arr = np.ones_like(phase_obs)*param['z'][:, np.newaxis]
+        dFlux = {}
+        for val in self.param_Fisher:
+            """
+            dflux = lc_ref['d'+val]
+            dFlux[val] = griddata((phase, z), dflux, (phase_obs, yi_arr),
+                                  method=self.method, fill_value=0.)
+            """
+            dFlux[val] = self.dflux_interp[val]((phase_obs, yi_arr))
+
+        FisherEl = {}
+        for ia, vala in enumerate(self.param_Fisher):
+            for jb, valb in enumerate(self.param_Fisher):
+                if jb >= ia:
+                    FisherEl[vala+valb] = dFlux[vala] * \
+                        dFlux[valb]/fluxerr_obs**2
+        return FisherEl
+
+    def SelectSave(self, param, flux, fluxerr, phase, mjd):
+
+        min_rf_phase = param['min_rf_phase']
+        max_rf_phase = param['max_rf_phase']
+        z = param['z']
+        daymax = param['DayMax']
+
+        # estimate element for Fisher matrix
+        #FisherEl = self.FisherValues(param, phase, fluxerr)
+
+        # flag for LC points outside the restframe phase range
+        min_rf_phase = min_rf_phase[:, np.newaxis]
+        max_rf_phase = max_rf_phase[:, np.newaxis]
+        flag = (phase >= min_rf_phase) & (phase <= max_rf_phase)
+
+        # flag for LC points outside the (blue-red) range
+        mean_restframe_wavelength = np.array(
+            [self.telescope.mean_wavelength[self.band]]*len(mjd))
+        mean_restframe_wavelength = np.tile(
+            mean_restframe_wavelength, (len(z), 1))/(1.+z[:, np.newaxis])
+        flag &= (mean_restframe_wavelength > self.blue_cutoff) & (
+            mean_restframe_wavelength < self.red_cutoff)
+        flag_idx = np.argwhere(flag)
+
+        # Now apply the flags to grab only interested values
+        fluxes = np.ma.array(flux, mask=~flag)
+        fluxes_err = np.ma.array(fluxerr, mask=~flag)
+        mag = -2.5*np.log10(fluxes/3631.)
+        phases = np.ma.array(phase, mask=~flag)
+        snr_m5 = np.ma.array(flux/fluxerr, mask=~flag)
+        obs_time = np.ma.array(
+            np.tile(mjd, (len(mag), 1)), mask=~flag)
+        """
+        seasons = np.ma.array(
+            np.tile(season, (len(mag_obs), 1)), mask=~flag)
+        """
+        z_vals = z[flag_idx[:, 0]]
+        DayMax_vals = daymax[flag_idx[:, 0]]
+
+        # Results are stored in an astropy Table
+        tab = Table()
+        tab.add_column(Column(fluxes[~fluxes.mask], name='flux'))
+        tab.add_column(Column(fluxes_err[~fluxes_err.mask], name='fluxerr'))
+        tab.add_column(Column(phases[~phases.mask], name='phase'))
+        tab.add_column(Column(snr_m5[~snr_m5.mask], name='snr_m5'))
+        tab.add_column(Column(mag[~mag.mask], name='mag'))
+        tab.add_column(
+            Column((2.5/np.log(10.))/snr_m5[~snr_m5.mask], name='magerr'))
+        tab.add_column(Column(obs_time[~obs_time.mask], name='time'))
+
+        tab.add_column(
+            Column(['LSST::'+self.band]*len(tab), name='band',
+                   dtype=h5py.special_dtype(vlen=str)))
+
+        tab.add_column(Column([2.5*np.log10(3631)]*len(tab),
+                              name='zp'))
+
+        tab.add_column(
+            Column(['ab']*len(tab), name='zpsys',
+                   dtype=h5py.special_dtype(vlen=str)))
+
+        # tab.add_column(Column(seasons[~seasons.mask], name='season'))
+        tab.add_column(Column(z_vals, name='z'))
+        tab.add_column(Column(DayMax_vals, name='DayMax'))
+        """
+        for key, vals in FisherEl.items():
+            matel = np.ma.array(vals, mask=~flag)
+            tab.add_column(Column(matel[~matel.mask], name='F_'+key))
+        """
+        return tab
