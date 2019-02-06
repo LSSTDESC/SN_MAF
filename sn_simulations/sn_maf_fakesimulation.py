@@ -61,9 +61,9 @@ class SNMetric:
         # Cut down to only include filters in correct wave range.
 
         dataSlice.sort(order=self.mjdCol)
-        print('dataslice', np.unique(
-            dataSlice[['fieldRA', 'fieldDec', 'season']]), dataSlice.dtype)
+        # print('dataslice', np.unique(
+        #   dataSlice[['fieldRA', 'fieldDec', 'season']]), dataSlice.dtype)
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
-        print(dataSlice, time)
+        #print(dataSlice, time)
         self.simu(dataSlice, self.field_type, 100, self.season)
         return None

@@ -54,7 +54,7 @@ def run(config_filename):
         slicer = slicers.HealpixSlicer(nside=config['Pixelisation']['nside'])
 
         # print('slicer',slicer.pixArea,slicer.slicePoints['ra'])
-        print('alors condif', config)
+        #print('alors condif', config)
         metric = module.SNMetric(
             config=config, coadd=config['Observations']['coadd'])
 
@@ -76,7 +76,7 @@ def run(config_filename):
         config_fake = yaml.load(open(config['Param_file']))
         fake_obs = Generate_Fake_Observations(config_fake).Observations
 
-        print(fake_obs)
+        # print(fake_obs)
         metric = module.SNMetric(config=config)
         metric.run(fake_obs)
 
