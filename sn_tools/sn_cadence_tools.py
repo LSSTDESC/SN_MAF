@@ -5,7 +5,7 @@ import numpy.lib.recfunctions as rf
 import matplotlib._cntr as cntr
 import h5py
 from astropy.table import Table, Column, vstack
-from scipy.interpolate import griddata, interp2d, CloughTocher2DInterpolator
+from scipy.interpolate import griddata, interpn, CloughTocher2DInterpolator, LinearNDInterpolator
 from sn_utils.utils.sn_telescope import Telescope
 
 
@@ -331,6 +331,7 @@ class TemplateData(object):
         self.band = band
         idx = self.refdata['band'] == band
         lc_ref = self.refdata[idx]
+        print('aiaiai', lc_ref.dtype)
         # load reference values (only once)
         phase_ref = lc_ref['phase']
         z_ref = lc_ref['z']
@@ -535,3 +536,93 @@ class TemplateData(object):
             tab.add_column(Column(matel[~matel.mask], name='F_'+key))
         """
         return tab
+
+
+class TemplateData_x1color(object):
+    """
+    class to load template LC
+    """
+
+    def __init__(self, filenames, band):
+        """
+        """
+        self.fi = filenames
+        self.refdata = self.Stack()
+        self.telescope = Telescope(airmass=1.1)
+        self.blue_cutoff = 300.
+        self.red_cutoff = 800.
+        self.param_Fisher = ['X0', 'X1', 'Color']
+        self.method = 'cubic'
+
+        self.band = band
+        idx = self.refdata['band'] == band
+        lc_ref = self.refdata[idx]
+        # load reference values (only once)
+        phase_ref = lc_ref['phase']
+        z_ref = lc_ref['z']
+        flux_ref = lc_ref['flux']
+        fluxerr_ref = lc_ref['fluxerr']
+        x1_ref = lc_ref['x1']
+        color_ref = lc_ref['color']
+        self.gamma_ref = lc_ref['gamma'][0]
+        self.m5_ref = np.unique(lc_ref['m5'])[0]
+        print(x1_ref, color_ref)
+        self.dflux_interp = {}
+        self.flux_interp = LinearNDInterpolator(
+            (phase_ref, z_ref, x1_ref, color_ref), flux_ref, fill_value=1.e-5)
+
+        """
+        self.fluxerr_interp = CloughTocher2DInterpolator(
+            (phase_ref, z_ref, x1_ref, color_ref), fluxerr_ref, fill_value=1.e-8)
+        for val in self.param_Fisher:
+            dflux = lc_ref['d'+val]
+            self.dflux_interp[val] = CloughTocher2DInterpolator(
+                (phase_ref, z_ref, x1_ref, color_ref), dflux, fill_value=1.e-8)
+
+        
+            
+        # this is to convert mag to flux in e per sec
+        self.mag_to_flux_e_sec = {}
+        mag_range = np.arange(14., 32., 0.1)
+        for band in 'grizy':
+            fluxes_e_sec = self.telescope.mag_to_flux_e_sec(
+                mag_range, [band]*len(mag_range), [30]*len(mag_range))
+            self.mag_to_flux_e_sec[band] = interpolate.interp1d(
+                mag_range, fluxes_e_sec[:, 1], fill_value=0., bounds_error=False)
+        """
+
+    def Stack(self):
+
+        tab_tot = None
+
+        for fname in self.fi:
+
+            f = h5py.File(fname, 'r')
+            keys = f.keys()
+
+            for kk in keys:
+                tab_b = Table.read(fname, path=kk)
+                if tab_tot is None:
+                    tab_tot = tab_b
+                else:
+                    tab_tot = vstack([tab_tot, tab_b],
+                                     metadata_conflicts='silent')
+
+        return tab_tot
+
+    def Fluxes(self, mjd_obs, param):
+
+        z = param['z']
+        daymax = param['DayMax']
+        x1 = param['x1']
+        color = param['color']
+
+        # observations (mjd, daymax, z) where to get the fluxes
+        phase_obs = mjd_obs-daymax[:, np.newaxis]
+        phase_obs = phase_obs/(1.+z[:, np.newaxis])  # phases of LC points
+        z_arr = np.ones_like(phase_obs)*z[:, np.newaxis]
+        x1_arr = np.ones_like(phase_obs)*x1[:, np.newaxis]
+        color_arr = np.ones_like(phase_obs)*color[:, np.newaxis]
+        flux = self.flux_interp((phase_obs, z_arr, x1_arr, color_arr))
+
+        return flux

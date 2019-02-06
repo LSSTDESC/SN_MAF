@@ -41,7 +41,7 @@ Observations:
    coadd: None # this is the coaddition per night
    season: 1 #season to simulate (-1 = all seasons)
 Simulator :
-    name : SN_Cosmo           # Simulator name: SN_Cosmo,SN_Sim,SN_Ana, SN_Fast
+    name : sn_catalog_simulations.sim_sncosmo.sn_cosmo   # Simulator: sn_cosmo,sn_sim,sn_ana, sn_fast
     model : salt2-extended   # spectra model
     version : 1.0                     #version
 Host Parameters: None         # Host parameters
@@ -53,5 +53,5 @@ Output:
     save: True
 Multiprocessing:
     nproc: 1
-Metric: sn_maf_fakesimulation
+Metric: sn_maf.sn_simulations.sn_maf_fakesimulation
 Param_file: sn_maf/input/Fake_cadence.yaml

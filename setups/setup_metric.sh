@@ -37,7 +37,7 @@ else
     thescript=${arr[$location]}
     source ${thescript}
     setup lsst_sims
-
+    export PYTHONPATH=${PWD}:$PYTHONPATH
     #export PYTHONPATH=${PWD}/sn_maf/sn_metrics:$PYTHONPATH
     #export PYTHONPATH=${PWD}/sn_maf/sn_stackers:$PYTHONPATH
     #export PYTHONPATH=${PWD}/sn_maf/sn_simulations:$PYTHONPATH
