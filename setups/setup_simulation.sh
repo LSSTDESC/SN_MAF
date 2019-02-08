@@ -27,17 +27,6 @@ then
 	    cd ..
 	done
     fi
-    
-    #checking whether hdf5 is accessible localy or not
-    lib='h5py'
-    echo $thedir
-    if [ -d ${thedir}$lib ]
-    then
-	echo $lib 'already installed -> updating PYTHONPATH'
-    else
-	echo $lib 'not installed -> installing with pip'
-	pip install --prefix=${PWD} ${lib}==2.7.1
-    fi
     fi
 # now update python path
 echo "updating python path"
