@@ -132,7 +132,7 @@ class Lims:
         for i in range(len(self.lims)):
             sorted_keys.append(np.sort([k for k in self.lims[i].keys()])[::-1])
 
-        plt.figure()
+        plt.figure(figsize=(8, 6))
         plt.imshow(metric, extent=(
             self.mag_range[0], self.mag_range[1], self.dt_range[0], self.dt_range[1]), aspect='auto', alpha=0.25)
         print(type(metricValues), len(np.copy(metricValues)),
@@ -570,7 +570,7 @@ class TemplateData_x1color(object):
         self.dflux_interp = {}
         self.flux_interp = LinearNDInterpolator(
             (phase_ref, z_ref, x1_ref, color_ref), flux_ref, fill_value=1.e-5)
-
+        print('interpolation ready')
         """
         self.fluxerr_interp = CloughTocher2DInterpolator(
             (phase_ref, z_ref, x1_ref, color_ref), fluxerr_ref, fill_value=1.e-8)
@@ -597,6 +597,7 @@ class TemplateData_x1color(object):
 
         for fname in self.fi:
 
+            print('loading', fname)
             f = h5py.File(fname, 'r')
             keys = f.keys()
 

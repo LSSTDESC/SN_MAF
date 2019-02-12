@@ -8,7 +8,7 @@ import yaml
 from importlib import import_module
 # import sqlite3
 import numpy as np
-from sn_cadence_tools import Reference_Data
+from sn_maf.sn_tools.sn_cadence_tools import Reference_Data
 import healpy as hp
 import numpy.lib.recfunctions as rf
 
@@ -126,7 +126,6 @@ def run(config_filename):
     snr_fakes = metricValues['snr_fakes']
     detec_frac = metricValues['detec_frac']
 
-    """
     for (Ra, Dec, season) in np.unique(snr_obs[['fieldRA', 'fieldDec', 'season']]):
         idx = (snr_obs['fieldRA'] == Ra) & (
             snr_obs['fieldDec'] == Dec) & (snr_obs['season'] == season)
@@ -137,11 +136,12 @@ def run(config_filename):
         print('alors', Ra, Dec, np.unique(
             sel_fakes[['fieldRA', 'fieldDec', 'season']]))
         SNRPlot(Ra, Dec, season, sel_obs, sel_fakes, config, metric, z)
-    """
 
+    """
     print(detec_frac)
     DetecFracPlot(detec_frac, config['Pixelisation']
                   ['nside'], config['names_ref'])
+    """
     # frac_obs = Fraction_Observation(res, config, metric)
     # print(frac_obs)
     # mbg.writeAll()

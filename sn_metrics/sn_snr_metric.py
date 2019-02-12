@@ -1,10 +1,10 @@
 import numpy as np
 from lsst.sims.maf.metrics import BaseMetric
-from coadd_stacker import CoaddStacker
+from sn_maf.sn_stackers.coadd_stacker import CoaddStacker
 import healpy as hp
 import numpy.lib.recfunctions as rf
 import multiprocessing
-from sn_cadence_tools import Generate_Fake_Observations
+from sn_maf.sn_tools.sn_cadence_tools import Generate_Fake_Observations
 import yaml
 from scipy import interpolate
 

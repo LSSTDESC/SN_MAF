@@ -12,7 +12,7 @@ import numpy as np
 #from scipy import interpolate
 #import numpy.lib.recfunctions as rf
 #from scipy import interpolate
-from sn_cadence_tools import Lims
+from sn_maf.sn_tools.sn_cadence_tools import Lims
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
