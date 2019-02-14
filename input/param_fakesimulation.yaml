@@ -1,16 +1,16 @@
-ProductionID: Fake_Observation_-2.0_0.2
+ProductionID: Fake_Observation_2.0_-0.2
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
        type : fixed  #random or fixed
-       min : [-2.0,0.2]
+       min : [2.0,-0.2]
        max : [2.0,0.2]
        rate :  JLA
    z :              # redshift
        type : uniform
        min : 0.01
-       max : 0.2
-       step: 0.05
+       max : 0.12
+       step: 0.01
        rate : Perrett # Type Ia volumetric rate : Perrett, Ripoche, Dilday.
    DayMax:                 # Tmax (obs. frame)
        type : unique #uniform or random or unique
