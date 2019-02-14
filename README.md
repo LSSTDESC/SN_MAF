@@ -45,6 +45,7 @@ sn_maf is a framework for estimating MAF metrics for supernovae (SN). It can als
 - simulations using an OpSim database as input 
    - python sn_maf/run_scripts/run_simulation.py sn_maf/input/param_simulation.yaml
    - the choice of the simulator (two available at the moment: sncosmo and snfast) can be done in the param_simulation.yaml file.
+   - two output files should be generated: Simu_name.hdf5 and LC_name.hdf5 where name will be replaced by the "ProductionID" chosen in the yaml file. These output files should be located in the "Output" directory specified in the yaml file. Simu_name.hdf5 contains a list of the light curves generated and LC_name.hdf5 contains the light curves (astropy tables).
 - simulating "fake" observations 
    - python sn_maf/run_scripts/run_simulation.py sn_maf/input/param_fakesimulation.yaml
    - An example of parameters used for observations (cadence, bands, m5, ...) can be found in  sn_maf/input/Fake_cadence.yaml
