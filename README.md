@@ -5,7 +5,7 @@ sn_maf is a framework for estimating MAF metrics for supernovae (SN). It can als
 ## **Instruction for installation**
   - git clone https://github.com/lsstdesc/sn_maf.git
   - cd sn_maf
-  - git checkout dev
+  - git checkout dev_stable
 
 ## **Running SN-MAF metrics**
 

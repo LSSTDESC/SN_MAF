@@ -19,10 +19,10 @@ then
 	do
 	    echo 'Cloning' $pack
 	    git clone $where/$pack.git
-	    echo "Moving to the dev branch"
+	    echo "Moving to the dev_stable branch"
 	    cd $pack
 	    git branch
-	    git checkout dev
+	    git checkout dev_stable
 	    git branch
 	    cd ..
 	done
