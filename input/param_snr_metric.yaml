@@ -2,15 +2,16 @@ ProductionID: DD_baseline2018a
 SN parameters:
    X1: -2.0        # stretch 
    Color: 0.2   #color
+   shift: 10 # daymax is equal to MJD-shift (in day)
 Observations: 
    #filename: /sps/lsst/cadence/LSST_SN_PhG/cadence_db/opsim_db/kraken_2026.db # Name of db obs file (full path)
    filename: /home/philippe/LSST/DB_Files/kraken_2026.db
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: [1,2] #season to simulate (-1 = all seasons)
-   bands: 'rizy' #bands to consider
+   season: [1,2,3] #season to simulate (-1 = all seasons)
+   bands: 'riz' #bands to consider
    #bands: 'i'
-   z: 0.7
+   z: 0.3
 Pixelisation:
     nside: 64
 #Li file : ['sn_maf/reference_files/Li_SNSim_-2.0_0.2.npy']

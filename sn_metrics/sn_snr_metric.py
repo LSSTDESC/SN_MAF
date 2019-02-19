@@ -18,7 +18,7 @@ class SNMetric(BaseMetric):
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
-                 vistimeCol='visitTime', coadd=True, lim_sn=None, names_ref=None,
+                 vistimeCol='visitTime', coadd=True, lim_sn=None, names_ref=None, z=0.01,
                  uniqueBlocks=False, config=None, **kwargs):
 
         self.mjdCol = mjdCol
@@ -42,7 +42,11 @@ class SNMetric(BaseMetric):
 
         self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
         self.config = config
-
+        self.blue_cutoff = 300.
+        self.red_cutoff = 800.
+        self.min_rf_phase = -20.
+        self.max_rf_phase = 60.
+        self.z = z
         # this is for output
         """
         save_status = config['Output']['save']
@@ -52,9 +56,11 @@ class SNMetric(BaseMetric):
         # sn parameters
         sn_parameters = config['SN parameters']
 
+        # SN DayMax: current date - shift days
+        self.shift = sn_parameters['shift']
         self.field_type = config['Observations']['fieldtype']
         self.season = config['Observations']['season']
-        #self.season = season
+        # self.season = season
         area = 9.6  # survey_area in sqdeg - 9.6 by default for DD
         if self.field_type == 'WFD':
             # in that case the survey area is the healpix area
@@ -63,7 +69,7 @@ class SNMetric(BaseMetric):
 
         # Load the reference Li file
 
-        #self.Li = np.load(config['Reference File'])
+        # self.Li = np.load(config['Reference File'])
         self.lim_sn = lim_sn
         self.names_ref = names_ref
 
@@ -79,44 +85,55 @@ class SNMetric(BaseMetric):
 
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
 
-        self.shift = 10.  # SN DayMax: current date - shift days
-
-        seasons = self.season
-
+        seasons = [float(seas) for seas in self.season]
+        # seasons = self.season
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
 
-        snr_obs = self.SNR_Season(dataSlice, seasons)
-        snr_fakes = self.SNR_Fakes(dataSlice, seasons)
-        detect_frac = self.Detecting_Fraction(snr_obs, snr_fakes)
+        # get infos on seasons
+        self.info_season = self.SeasonInfo(dataSlice, seasons)
+
+        snr_obs = self.SNR_Season(dataSlice, seasons)  # SNR for observations
+        snr_fakes = self.SNR_Fakes(dataSlice, seasons)  # SNR for fakes
+        detect_frac = self.Detecting_Fraction(
+            snr_obs, snr_fakes)  # Detection fraction
 
         return {'snr_obs': snr_obs, 'snr_fakes': snr_fakes, 'detec_frac': detect_frac}
 
     def SNR_Season(self, dataSlice, seasons, j=-1, output_q=None):
+        """
+        Estimate SNR for all seasons
+        Input: dataSlice, seasons
+        Output: array with the following fields all are of f8 type, except band which is of U1
+        SNR_SNCosmo , SNR_SNSim :  Signal-To-Noise Ratio estimator
+        season : season
+        cadence: cadence of the season 
+        season_length: length of the season
+        MJD_min: min MJD of the season
+        DayMax: SN max luminosity MJD (aka T0)
+        MJD: 
+        m5_eff: mean m5 of obs passing the min_phase, max_phase cut
+        fieldRA: mean field RA
+        fieldDec: mean field Dec
+        band:  band
+        m5: mean m5 (over the season)
+        Nvisits: median number of visits (per observation) (over the season)
+        ExposureTime: median exposure time (per observation) (over the season)
+        """
 
+        # check whether we do have data for the considered season for this dataSlice
         sel = None
-        rv = []
         for season in seasons:
-            idx = (dataSlice[self.seasonCol] == season)
-            slice_sel = dataSlice[idx]
-            slice_sel.sort(order=self.mjdCol)
-            mjds_season = slice_sel[self.mjdCol]
-            cadence = np.mean(mjds_season[1:]-mjds_season[:-1])
-            mjd_min = np.min(mjds_season)
-            mjd_max = np.max(mjds_season)
-            season_length = mjd_max-mjd_min
-            rv.append((float(season), cadence, season_length, mjd_min, mjd_max))
+            idx = dataSlice[self.seasonCol] == season
             if sel is None:
                 sel = dataSlice[idx]
             else:
                 sel = np.concatenate((sel, dataSlice[idx]))
 
-        #print('ici', rv)
-        self.info_season = np.rec.fromrecords(
-            rv, names=['season', 'cadence', 'season_length', 'MJD_min', 'MJD_max'])
-
         if len(sel) == 0:
             return None
+
+        # Get few infos: RA, Dec, Nvisits, m5, exptime
         fieldRA = np.mean(sel[self.RaCol])
         fieldDec = np.mean(sel[self.DecCol])
         Nvisits = np.median(sel[self.nexpCol]/2.)  # one visit = 2 exposures
@@ -124,8 +141,11 @@ class SNMetric(BaseMetric):
         exptime = np.median(sel[self.exptimeCol])
         sel.sort(order=self.mjdCol)
         mjds = sel[self.mjdCol]
+        band = np.unique(sel[self.filterCol])[0]
+
+        # Define MJDs to consider for metric estimation
+        # basically: step of one day between MJDmin and MJDmax
         dates = None
-        # for key, val in periods.items():
         for val in self.info_season:
             if dates is None:
                 dates = np.arange(val['MJD_min'], val['MJD_max']+1., 1.)
@@ -133,21 +153,28 @@ class SNMetric(BaseMetric):
                 dates = np.concatenate(
                     (dates, np.arange(val['MJD_min'], val['MJD_max']+1., 1.)))
 
+        # SN  DayMax: dates-shift where shift is chosen in the input yaml file
         T0_lc = dates-self.shift
 
-        band = np.unique(sel[self.filterCol])[0]
+        # for these DayMax, estimate the phases of LC points corresponding to the current dataSlice MJDs
         diff_time = dates[:, np.newaxis]-mjds
         time_for_lc = -T0_lc[:, None]+mjds
-        flag = (diff_time >= 0) & (diff_time <= 200.)
+        phase = time_for_lc/(1.+self.z)  # phases of LC points
+        # flag: select LC points only in between min_rf_phase and max_rf_phase
+        flag = (phase >= self.min_rf_phase) & (phase <= self.max_rf_phase)
 
+        # tile m5, MJDs, and seasons to estimate all fluxes and SNR at once
         m5_vals = np.tile(sel[self.m5Col], (len(time_for_lc), 1))
         mjd_vals = np.tile(sel[self.mjdCol], (len(time_for_lc), 1))
         season_vals = np.tile(sel[self.seasonCol], (len(time_for_lc), 1))
 
-        fluxes_tot, snr = self.SNR(time_for_lc, m5_vals, flag, season_vals)
+        # estimate fluxes and snr in SNR function
+        fluxes_tot, snr = self.SNR(
+            time_for_lc, m5_vals, flag, season_vals, T0_lc)
 
+        # now save the results in a record array
+        snr_nomask = np.ma.copy(snr)
         _, idx = np.unique(snr['season'], return_inverse=True)
-        #print('hh', np.unique(snr['season']), idx)
         infos = self.info_season[idx]
         vars_info = ['cadence', 'season_length', 'MJD_min']
         snr = rf.append_fields(
@@ -164,6 +191,7 @@ class SNMetric(BaseMetric):
         snr = rf.append_fields(
             snr, names, [global_info[name] for name in names])
 
+       # Display LC and SNR at the same time
         if self.display:
             self.Plot(fluxes_tot, mjd_vals, flag, snr, T0_lc, dates)
 
@@ -172,8 +200,40 @@ class SNMetric(BaseMetric):
         else:
             return snr
 
-    def SNR(self, time_lc, m5_vals, flag, season_vals):
+    def SeasonInfo(self, dataSlice, seasons):
+        """
+        Get info on seasons for each dataSlice
+        input : dataSlice
+        output: recordarray with the following:
+        season, cadence, season_length, MJDmin, MJDmax
+        """
 
+        rv = []
+        for season in seasons:
+            idx = (dataSlice[self.seasonCol] == season)
+            slice_sel = dataSlice[idx]
+            slice_sel.sort(order=self.mjdCol)
+            mjds_season = slice_sel[self.mjdCol]
+            cadence = np.mean(mjds_season[1:]-mjds_season[:-1])
+            mjd_min = np.min(mjds_season)
+            mjd_max = np.max(mjds_season)
+            season_length = mjd_max-mjd_min
+            rv.append((float(season), cadence, season_length, mjd_min, mjd_max))
+
+        info_season = np.rec.fromrecords(
+            rv, names=['season', 'cadence', 'season_length', 'MJD_min', 'MJD_max'])
+
+        return info_season
+
+    def SNR(self, time_lc, m5_vals, flag, season_vals, T0_lc):
+        """
+        Estimate SNR vs time
+        Input: time(MJDS-T0), m5, seasons of observations
+        flag: selection of LC points
+        Output:
+        estimated fluxes
+        array of snr
+        """
         seasons = np.ma.array(season_vals, mask=~flag)
         fluxes_tot = {}
         snr_tab = None
@@ -196,7 +256,34 @@ class SNMetric(BaseMetric):
                     snr_tab, 'SNR_'+name, np.copy(snr_season))
         snr_tab = rf.append_fields(snr_tab, 'season', np.mean(seasons, axis=1))
 
+        # check if any masked value remaining
+        # this would corrspond to case where no obs point has been selected
+        # ie no points with phase in [phase_min,phase_max]
+        # this happens when internight gaps are large (typically larger than shift)
+        idmask = np.where(snr_tab.mask)
+        if len(idmask) > 0:
+            tofill = np.copy(snr_tab['season'])
+            season_recover = self.GetSeason(
+                T0_lc[np.where(snr_tab.mask)])
+            tofill[idmask] = season_recover
+            snr_tab = np.ma.filled(snr_tab, fill_value=tofill)
+
         return fluxes_tot, snr_tab
+
+    def GetSeason(self, T0):
+        """
+        Estimate the seasons corresponding to T0 values
+        Input: set of T0s
+        Output: set of correspondinf seasons
+        """
+
+        diff_min = T0[:, None]-self.info_season['MJD_min']
+        diff_max = -T0[:, None]+self.info_season['MJD_max']
+        seasons = np.tile(self.info_season['season'], (len(diff_min), 1))
+        flag = (diff_min >= 0) & (diff_max >= 0)
+        seasons = np.ma.array(seasons, mask=~flag)
+
+        return np.mean(seasons, axis=1)
 
     def SNR_Fakes(self, dataSlice, seasons):
         """
@@ -206,6 +293,7 @@ class SNMetric(BaseMetric):
         # generate fake observations
         fake_obs = None
         for season in seasons:
+
             idx = (dataSlice[self.seasonCol] == season)
             band = np.unique(dataSlice[idx][self.filterCol])[0]
             if fake_obs is None:
@@ -215,6 +303,7 @@ class SNMetric(BaseMetric):
                     (fake_obs, self.Gen_Fakes(dataSlice[idx], band, season)))
 
         # estimate SNR vs MJD
+
         snr_fakes = self.SNR_Season(
             fake_obs[fake_obs['filter'] == band], seasons=seasons)
 
@@ -241,13 +330,14 @@ class SNMetric(BaseMetric):
         config_fake['Dec'] = fieldDec
         config_fake['bands'] = [band]
         config_fake['Cadence'] = [cadence]
-        config_fake['MJD_min'] = mjd_min
+        config_fake['MJD_min'] = [mjd_min]
         config_fake['season_length'] = season_length
         config_fake['Nvisits'] = [Nvisits]
         m5_nocoadd = m5-1.25*np.log10(float(Nvisits)*Tvisit/30.)
         config_fake['m5'] = [m5_nocoadd]
+        config_fake['seasons'] = [season]
         fake_obs_season = Generate_Fake_Observations(config_fake).Observations
-        fake_obs_season['season'] = [season]*len(fake_obs_season)
+
         return fake_obs_season
 
     def Plot(self, fluxes, mjd, flag, snr, T0_lc, dates):
@@ -312,7 +402,7 @@ class SNMetric(BaseMetric):
 
     def Detecting_Fraction(self, snr_obs, snr_fakes):
         """
-        Estimate the time fraction (per season) for which 
+        Estimate the time fraction (per season) for which
         snr_obs > snr_fakes
         This would correspond to a fraction of detectability.
         For regular cadences one should get a result close to 1
@@ -323,6 +413,7 @@ class SNMetric(BaseMetric):
         band = np.unique(snr_obs['band'])[0]
 
         rtot = []
+
         for season in np.unique(snr_obs['season']):
             idx = snr_obs['season'] == season
             sel_obs = snr_obs[idx]

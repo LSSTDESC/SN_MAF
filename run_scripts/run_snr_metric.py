@@ -66,15 +66,20 @@ def run(config_filename):
     metric = {}
     # processing. Band after band
 
+    Ra_ref = 0.000
+    Dec_ref = -2.308039
+
     for band in bands:
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
+        #sql_i += ' AND abs(fieldRA-(%f))< %f' % (Ra_ref, 1.e-2)+' AND '
+        #sql_i += 'abs(fieldDec-(%f))< %f' % (Dec_ref, 1.e-2)
 
         lim_sn[band] = Reference_Data(
             config['Li file'], config['Mag_to_flux file'], band, z)
 
         metric[band] = module.SNMetric(config=config, coadd=config['Observations']
-                                       ['coadd'], lim_sn=lim_sn[band], names_ref=config['names_ref'])
+                                       ['coadd'], lim_sn=lim_sn[band], names_ref=config['names_ref'], z=z)
         bundles.append(metricBundles.MetricBundle(metric[band], slicer, sql_i))
         names.append(band)
 
@@ -103,7 +108,6 @@ def run(config_filename):
         res = {}
         for dstr in data_str:
             res[dstr] = None
-
         for val in data:
             for dstr in data_str:
                 if res[dstr] is None:
@@ -119,29 +123,26 @@ def run(config_filename):
                 metricValues[dstr] = np.concatenate(
                     (metricValues[dstr], res[dstr]))
 
-    print('bands', np.unique(metricValues['snr_obs']['band']),
-          metricValues['snr_fakes'].dtype, metricValues['snr_fakes']['fieldRA'])
-
     snr_obs = metricValues['snr_obs']
     snr_fakes = metricValues['snr_fakes']
     detec_frac = metricValues['detec_frac']
 
-    for (Ra, Dec, season) in np.unique(snr_obs[['fieldRA', 'fieldDec', 'season']]):
+    for inum, (Ra, Dec, season) in enumerate(np.unique(snr_obs[['fieldRA', 'fieldDec', 'season']])):
         idx = (snr_obs['fieldRA'] == Ra) & (
             snr_obs['fieldDec'] == Dec) & (snr_obs['season'] == season)
         sel_obs = snr_obs[idx]
         idxb = (np.abs(snr_fakes['fieldRA'] - Ra) < 1.e-5) & (np.abs(
             snr_fakes['fieldDec'] - Dec) < 1.e-5) & (snr_fakes['season'] == season)
         sel_fakes = snr_fakes[idxb]
-        print('alors', Ra, Dec, np.unique(
-            sel_fakes[['fieldRA', 'fieldDec', 'season']]))
         SNRPlot(Ra, Dec, season, sel_obs, sel_fakes, config, metric, z)
+        if inum >= 10:
+            break
 
-    """
-    print(detec_frac)
+    print(detec_frac.dtype)
+
     DetecFracPlot(detec_frac, config['Pixelisation']
                   ['nside'], config['names_ref'])
-    """
+
     # frac_obs = Fraction_Observation(res, config, metric)
     # print(frac_obs)
     # mbg.writeAll()
@@ -175,7 +176,7 @@ def SNRPlot(Ra, Dec, season, data, data_fakes, config, metric, z, draw_fakes=Tru
     if n_bands >= 2:
         ncols = 2
         nrows = int(n_bands/2+(n_bands % 2))
-    print('alors', ncols, nrows)
+
     figa, axa = plt.subplots(ncols=ncols, nrows=nrows, figsize=(15, 10))
 
     figa.suptitle('Ra = '+str(np.round(Ra, 2))+' Dec = '+str(np.round(Dec, 2)) +
@@ -194,7 +195,10 @@ def SNRPlot(Ra, Dec, season, data, data_fakes, config, metric, z, draw_fakes=Tru
         if nrows > 1:
             ax = axa[ifig][jfig]
         else:
-            ax = axa[jfig]
+            if ncols > 1:
+                ax = axa[jfig]
+            else:
+                ax = axa
 
         # Draw results
         for io, sim in enumerate(config['names_ref']):
@@ -226,17 +230,21 @@ def DetecFracPlot(data, nside, names_ref):
 
     data_heal = GetHealpix(data, nside)
     npix = hp.nside2npix(nside)
-    print(data_heal)
+    # print(data_heal)
     for band, season in np.unique(data_heal[['band', 'season']]):
         idx = (data_heal['band'] == band) & (data_heal['season'] == season)
         sel = data_heal[idx]
         for sim in names_ref:
+            fig, ax = plt.subplots()
             hpxmap = np.zeros(npix, dtype=np.float)
             hpxmap[sel['healpixID']] += sel['frac_obs_'+sim]
             cmap = plt.cm.jet
             cmap.set_under('w')
             # remove max=200 and norm='hist' to get the DDFs
-            hp.mollview(hpxmap, min=0, max=1., cmap=cmap, title=band)
+            median_value = np.median(sel['frac_obs_'+sim])
+            plt.axes(ax)
+            hp.mollview(hpxmap, min=0, max=1., cmap=cmap,
+                        title='{} - season {} \n median: {}'.format(band, int(season), np.round(median_value, 2)), hold=True)
 
     plt.show()
 

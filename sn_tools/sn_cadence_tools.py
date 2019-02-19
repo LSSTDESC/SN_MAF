@@ -285,8 +285,10 @@ class Generate_Fake_Observations:
         Ra = config['Ra']
         Dec = config['Dec']
         rtot = []
-        for season in range(1, config['nseasons']+1):
-            mjd_min = config['MJD_min'] + float(season-1)*inter_season_gap
+        # for season in range(1, config['nseasons']+1):
+        for il, season in enumerate(config['seasons']):
+            #mjd_min = config['MJD_min'] + float(season-1)*inter_season_gap
+            mjd_min = config['MJD_min'][il]
             mjd_max = mjd_min+config['season_length']
 
             for i, band in enumerate(bands):
