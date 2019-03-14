@@ -8,8 +8,8 @@ Observations:
    filename: /home/philippe/LSST/DB_Files/kraken_2026.db
    fieldtype: DD #DD or WFD
    coadd: True # this is the coaddition per night
-   season: [1,2,3] #season to simulate (-1 = all seasons)
-   bands: 'riz' #bands to consider
+   season: [2] #season to simulate (-1 = all seasons)
+   bands: 'r' #bands to consider
    #bands: 'i'
    z: 0.3
 Pixelisation:

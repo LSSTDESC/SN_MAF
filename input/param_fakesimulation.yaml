@@ -1,9 +1,9 @@
-ProductionID: Fake_Observation_2.0_-0.2
+ProductionID: Fake_Observation_0.0_0.0
 SN parameters:
    Id : 100                   # Id of the first SN
    X1_Color:                    # stretch and color
        type : fixed  #random or fixed
-       min : [2.0,-0.2]
+       min : [0.0,0.0]
        max : [2.0,0.2]
        rate :  JLA
    z :              # redshift
@@ -20,7 +20,7 @@ SN parameters:
    absmag : -19.0906          # peak abs mag
    band : bessellB             # band for absmag
    magsys : vega              # magsys for absmag
-   differential_flux: False
+   differential_flux: True
 Cosmology:
    Model : w0waCDM      # Cosmological model
    Omega_m : 0.30             # Omega_m

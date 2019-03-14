@@ -98,6 +98,11 @@ class SNMetric(BaseMetric):
         detect_frac = self.Detecting_Fraction(
             snr_obs, snr_fakes)  # Detection fraction
 
+        snr_obs = np.asarray(snr_obs)
+        snr_fakes = np.asarray(snr_fakes)
+        detect_frac = np.asarray(detect_frac)
+        # print(test)
+        #print('returning', type(snr_obs), type(snr_fakes), type(detect_frac))
         return {'snr_obs': snr_obs, 'snr_fakes': snr_fakes, 'detec_frac': detect_frac}
 
     def SNR_Season(self, dataSlice, seasons, j=-1, output_q=None):
@@ -107,11 +112,11 @@ class SNMetric(BaseMetric):
         Output: array with the following fields all are of f8 type, except band which is of U1
         SNR_SNCosmo , SNR_SNSim :  Signal-To-Noise Ratio estimator
         season : season
-        cadence: cadence of the season 
+        cadence: cadence of the season
         season_length: length of the season
         MJD_min: min MJD of the season
         DayMax: SN max luminosity MJD (aka T0)
-        MJD: 
+        MJD:
         m5_eff: mean m5 of obs passing the min_phase, max_phase cut
         fieldRA: mean field RA
         fieldDec: mean field Dec
@@ -160,8 +165,10 @@ class SNMetric(BaseMetric):
         diff_time = dates[:, np.newaxis]-mjds
         time_for_lc = -T0_lc[:, None]+mjds
         phase = time_for_lc/(1.+self.z)  # phases of LC points
-        # flag: select LC points only in between min_rf_phase and max_rf_phase
-        flag = (phase >= self.min_rf_phase) & (phase <= self.max_rf_phase)
+        # flag: select LC points only in between min_rf_phase and max_phase
+        phase_max = self.shift/(1.+self.z)
+        # flag = (phase >= self.min_rf_phase) & (phase <= self.max_rf_phase)
+        flag = (phase >= self.min_rf_phase) & (phase <= phase_max)
 
         # tile m5, MJDs, and seasons to estimate all fluxes and SNR at once
         m5_vals = np.tile(sel[self.m5Col], (len(time_for_lc), 1))
@@ -268,6 +275,8 @@ class SNMetric(BaseMetric):
             tofill[idmask] = season_recover
             snr_tab = np.ma.filled(snr_tab, fill_value=tofill)
 
+        # print(fluxes_tot)
+        # print(test)
         return fluxes_tot, snr_tab
 
     def GetSeason(self, T0):
@@ -342,6 +351,7 @@ class SNMetric(BaseMetric):
 
     def Plot(self, fluxes, mjd, flag, snr, T0_lc, dates):
 
+        dir_save = '/home/philippe/LSST/sn_metric_new/Plots'
         import pylab as plt
         plt.ion()
         fig, ax = plt.subplots(ncols=1, nrows=2)
@@ -353,10 +363,10 @@ class SNMetric(BaseMetric):
         tot_label = []
         fontsize = 12
         mjd_ma = np.ma.array(mjd, mask=~flag)
+        # print(mjd_ma)
         fluxes_ma = {}
         for key, val in fluxes.items():
             fluxes_ma[key] = np.ma.array(val, mask=~flag)
-
         key = list(fluxes.keys())[0]
         jmax = len(fluxes_ma[key])
         tot_label = []
@@ -371,15 +381,24 @@ class SNMetric(BaseMetric):
 
                 tot_label_snr.append(ax[1].errorbar(
                     snr['MJD'][:j], snr['SNR_'+name][:j], color=colors[ib], label=name))
-                min_flux.append(np.min(fluxes_ma[name][j]))
-                max_flux.append(np.max(fluxes_ma[name][j]))
+                fluxx = fluxes_ma[name][j]
+                fluxx = fluxx[~fluxx.mask]
+                if len(fluxx) >= 2:
+                    min_flux.append(np.min(fluxx))
+                    max_flux.append(np.max(fluxx))
+                else:
+                    min_flux.append(0.)
+                    max_flux.append(200.)
+
             min_fluxes = np.min(min_flux)
             max_fluxes = np.max(max_flux)
+
             tot_label.append(ax[0].errorbar([T0_lc[j], T0_lc[j]], [
                              min_fluxes, max_fluxes], color='k', label='DayMax'))
             tot_label.append(ax[0].errorbar([dates[j], dates[j]], [
                              min_fluxes, max_fluxes], color='k', ls='--', label='Current MJD'))
             fig.canvas.flush_events()
+            plt.savefig('{}/{}_{}.png'.format(dir_save, 'snr', 1000 + j))
             if j != jmax-1:
                 ax[0].clear()
                 tot_label = []
@@ -399,6 +418,8 @@ class SNMetric(BaseMetric):
         for i in range(2):
             ax[i].tick_params(axis='x', labelsize=fontsize)
             ax[i].tick_params(axis='y', labelsize=fontsize)
+
+        # print(test)
 
     def Detecting_Fraction(self, snr_obs, snr_fakes):
         """
