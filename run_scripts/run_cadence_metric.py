@@ -9,10 +9,7 @@ import yaml
 from importlib import import_module
 import sqlite3
 import numpy as np
-#from scipy import interpolate
-#import numpy.lib.recfunctions as rf
-#from scipy import interpolate
-from sn_maf.sn_tools.sn_cadence_tools import Lims
+import sn_maf.sn_plotters.sn_cadencePlotters as sn_plot
 
 parser = argparse.ArgumentParser(
     description='Run a SN metric from a configuration file')
@@ -42,7 +39,7 @@ def run(config_filename):
         print(row)
     print('end')
     cur.execute('PRAGMA TABLE_INFO({})'.format('ObsHistory'))
-    
+
     names = [tup[1] for tup in cur.fetchall()]
     print(names)
     """
@@ -70,26 +67,23 @@ def run(config_filename):
     for band in SNR.keys():
         sql_i = sqlconstraint+' AND '
         sql_i += 'filter = "%s"' % (band)
-        #sql_i += ' AND '
-        #sql_i +=  'season= "%s"' % (season)
-        lim_sn[band] = Lims(config['Li file'], config['Mag_to_flux file'],
-                            band, SNR[band], mag_range=mag_range, dt_range=dt_range)
+        # sql_i += ' AND '
+        # sql_i +=  'season= "%s"' % (season)
         metric = module.SNMetric(
-            config=config, coadd=config['Observations']['coadd'], lim_sn=lim_sn[band], names_ref=config['names_ref'])
+            config=config, coadd=config['Observations']['coadd'], names_ref=config['names_ref'])
         bundles.append(metricBundles.MetricBundle(metric, slicer, sql_i))
         names.append(band)
 
         print('sql', sql_i)
 
-    print('hello', len(bundles))
     bdict = dict(zip(names, bundles))
     """
     mb = metricBundles.MetricBundle(metric, slicer, sqlconstraint)
-    
+
     mbD = {0:mb}
 
     resultsDb = db.ResultsDb(outDir='None')
-    
+
     mbg =  metricBundles.MetricBundleGroup(mbD, opsimdb,
                                       outDir=outDir, resultsDb=resultsDb)
 
@@ -101,11 +95,13 @@ def run(config_filename):
     result = mbg.runAll()
 
     # Let us display the results
+
     for band, val in bdict.items():
-        lim_sn[band].Plot_Cadence_Metric(
-            val.metricValues[~val.metricValues.mask])
-        lim_sn[band].Plot_Hist_zlim(
-            config['names_ref'], val.metricValues[~val.metricValues.mask])
+        sn_plot.Plot_Cadence(band, config['Li file'], config['Mag_to_flux file'],
+                             SNR[band],
+                             val.metricValues[~val.metricValues.mask],
+                             config['names_ref'],
+                             mag_range=mag_range, dt_range=dt_range)
 
     # mbg.writeAll()
     # mbg.plotAll(closefigs=False)

@@ -14,7 +14,7 @@ class SNMetric(BaseMetric):
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
-                 vistimeCol='visitTime', coadd=True, lim_sn=None, names_ref=None,
+                 vistimeCol='visitTime', coadd=True, names_ref=None,
                  uniqueBlocks=False, config=None, **kwargs):
 
         self.mjdCol = mjdCol
@@ -57,18 +57,9 @@ class SNMetric(BaseMetric):
             area = hp.nside2pixarea(
                 config['Pixelisation']['nside'], degrees=True)
 
-        # Load the reference Li file
-
-        #self.Li = np.load(config['Reference File'])
-        self.lim_sn = lim_sn
-        self.names_ref = names_ref
-        self.mag_range = config['Observations']['mag_range']
-        self.dt_range = config['Observations']['dt_range']
-
     def run(self, dataSlice, slicePoint=None):
         # Cut down to only include filters in correct wave range.
 
-        # print("attention",type(dataSlice),dataSlice.dtype)
         goodFilters = np.in1d(dataSlice['filter'], self.filterNames)
         dataSlice = dataSlice[goodFilters]
         if dataSlice.size == 0:
@@ -80,7 +71,7 @@ class SNMetric(BaseMetric):
         fieldRA = np.mean(dataSlice[self.RaCol])
         fieldDec = np.mean(dataSlice[self.DecCol])
         band = np.unique(dataSlice[self.filterCol])[0]
-        # for season  in np.unique(dataSlice[self.seasonCol]):
+
         seasons = [self.season]
         if self.season == -1:
             seasons = np.unique(dataSlice[self.seasonCol])
@@ -94,26 +85,8 @@ class SNMetric(BaseMetric):
             #time_diff = sel[self.mjdCol][1:]-sel[self.mjdCol][:-1]
             r.append((fieldRA, fieldDec, season, band,
                       np.mean(sel[self.m5Col]), cadence))
-        # print(self.Li)
 
         res = np.rec.fromrecords(
             r, names=['fieldRA', 'fieldDec', 'season', 'band', 'm5_mean', 'cadence_mean'])
-
-        idx = (res['m5_mean'] >= self.mag_range[0]) & (
-            res['m5_mean'] <= self.mag_range[1])
-        idx &= (res['cadence_mean'] >= self.dt_range[0]) & (
-            res['cadence_mean'] <= self.dt_range[1])
-        res = res[idx]
-        # print(len(res))
-        if len(res) > 0:
-            if self.lim_sn is not None:
-                for io, interp in enumerate(self.names_ref):
-                    #zlims = [interp(xi, yi)[0] for xi, yi in zip(res['m5_mean'],res['cadence_mean'])]
-                    zlims = self.lim_sn.Interp_griddata(io, res)
-                    # print('interp',type(zlims))
-                    zlims[np.isnan(zlims)] = -1
-                    # print(io,zlims)
-                    res = rf.append_fields(
-                        res, 'zlim_'+self.names_ref[io], zlims)
 
         return res
