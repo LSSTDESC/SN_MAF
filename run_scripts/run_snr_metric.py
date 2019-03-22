@@ -79,8 +79,8 @@ def run(config_filename):
         lim_sn[band] = Reference_Data(
             config['Li file'], config['Mag_to_flux file'], band, z)
 
-        metric[band] = module.SNMetric(config=config, coadd=config['Observations']
-                                       ['coadd'], lim_sn=lim_sn[band], names_ref=config['names_ref'], z=z)
+        metric[band] = module.SNSNRMetric(config=config, coadd=config['Observations']
+                                          ['coadd'], lim_sn=lim_sn[band], names_ref=config['names_ref'], z=z)
         bundles.append(metricBundles.MetricBundle(metric[band], slicer, sql_i))
         names.append(band)
 

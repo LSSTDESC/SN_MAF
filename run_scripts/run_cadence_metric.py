@@ -59,7 +59,6 @@ def run(config_filename):
 
     bundles = []
     names = []
-    lim_sn = {}
     SNR = dict(zip(config['Observations']['bands'],
                    config['Observations']['SNR']))
     mag_range = config['Observations']['mag_range']
@@ -69,7 +68,7 @@ def run(config_filename):
         sql_i += 'filter = "%s"' % (band)
         # sql_i += ' AND '
         # sql_i +=  'season= "%s"' % (season)
-        metric = module.SNMetric(
+        metric = module.SNCadenceMetric(
             config=config, coadd=config['Observations']['coadd'], names_ref=config['names_ref'])
         bundles.append(metricBundles.MetricBundle(metric, slicer, sql_i))
         names.append(band)

@@ -5,12 +5,12 @@ import healpy as hp
 import numpy.lib.recfunctions as rf
 
 
-class SNMetric(BaseMetric):
+class SNCadenceMetric(BaseMetric):
     """
     Measure mean m5, cadence and zlimit for SN
     """
 
-    def __init__(self, metricName='SNMetric',
+    def __init__(self, metricName='SNCadenceMetric',
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
@@ -33,7 +33,7 @@ class SNMetric(BaseMetric):
                 self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol]
         if coadd:
             cols += ['coadd']
-        super(SNMetric, self).__init__(
+        super(SNCadenceMetric, self).__init__(
             col=cols, metricDtype='object', metricName=metricName, **kwargs)
 
         self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])

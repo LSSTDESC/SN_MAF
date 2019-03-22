@@ -9,12 +9,12 @@ import yaml
 from scipy import interpolate
 
 
-class SNMetric(BaseMetric):
+class SNSNRMetric(BaseMetric):
     """
     Measure SN-SNR as a function of time.
     """
 
-    def __init__(self, metricName='SNMetric',
+    def __init__(self, metricName='SNSNRMetric',
                  mjdCol='observationStartMJD', RaCol='fieldRA', DecCol='fieldDec',
                  filterCol='filter', m5Col='fiveSigmaDepth', exptimeCol='visitExposureTime',
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
@@ -37,7 +37,7 @@ class SNMetric(BaseMetric):
                 self.nexpCol, self.vistimeCol, self.exptimeCol, self.seasonCol]
         if coadd:
             cols += ['coadd']
-        super(SNMetric, self).__init__(
+        super(SNSNRMetric, self).__init__(
             col=cols, metricDtype='object', metricName=metricName, **kwargs)
 
         self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
@@ -101,8 +101,7 @@ class SNMetric(BaseMetric):
         snr_obs = np.asarray(snr_obs)
         snr_fakes = np.asarray(snr_fakes)
         detect_frac = np.asarray(detect_frac)
-        # print(test)
-        #print('returning', type(snr_obs), type(snr_fakes), type(detect_frac))
+
         return {'snr_obs': snr_obs, 'snr_fakes': snr_fakes, 'detec_frac': detect_frac}
 
     def SNR_Season(self, dataSlice, seasons, j=-1, output_q=None):
@@ -275,8 +274,6 @@ class SNMetric(BaseMetric):
             tofill[idmask] = season_recover
             snr_tab = np.ma.filled(snr_tab, fill_value=tofill)
 
-        # print(fluxes_tot)
-        # print(test)
         return fluxes_tot, snr_tab
 
     def GetSeason(self, T0):

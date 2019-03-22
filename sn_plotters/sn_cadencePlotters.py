@@ -188,8 +188,11 @@ class Lims:
 
 def Plot_Cadence(band, Li_files, mag_to_flux_files, SNR, metricValues, names_ref, mag_range, dt_range):
 
-    res = np.concatenate(metricValues)
-    res = np.unique(res)
+    if len(metricValues) > 1:
+        res = np.concatenate(metricValues)
+        res = np.unique(res)
+    else:
+        res = metricValues
     lim_sn = Lims(Li_files, mag_to_flux_files,
                   band, SNR, mag_range=mag_range, dt_range=dt_range)
 
@@ -216,3 +219,4 @@ def Plot_Cadence(band, Li_files, mag_to_flux_files, SNR, metricValues, names_ref
             restot = np.concatenate((restot, resu))
 
         lim_sn.Plot_Hist_zlim(names_ref, restot)
+    return restot

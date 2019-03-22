@@ -38,13 +38,9 @@ else
     source ${thescript}
     setup lsst_sims
     export PYTHONPATH=${PWD}:$PYTHONPATH
-    #export PYTHONPATH=${PWD}/sn_maf/sn_metrics:$PYTHONPATH
-    #export PYTHONPATH=${PWD}/sn_maf/sn_stackers:$PYTHONPATH
-    #export PYTHONPATH=${PWD}/sn_maf/sn_simulations:$PYTHONPATH
-    #export PYTHONPATH=${PWD}/sn_maf/sn_tools:$PYTHONPATH
-    #export PYTHONPATH=${PWD}/sn_utils:$PYTHONPATH
-
+    
     #checking whether hdf5 is accessible localy or not
+    # this can be done only after release setups (**unfortunately**)
     thedir=${PWD}/lib/python3.6/site-packages/
     lib='h5py'
     echo $thedir
@@ -56,5 +52,4 @@ else
 	pip install --prefix=${PWD} ${lib}==2.7.1
     fi
     export PYTHONPATH=${thedir}:$PYTHONPATH
-    fi
 fi

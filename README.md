@@ -3,10 +3,16 @@ sn_maf is a framework for estimating MAF metrics for supernovae (SN). It can als
 
 
 ## **Instruction for installation**
-  - git clone https://github.com/lsstdesc/sn_maf.git
-  - cd sn_maf
-  - git checkout dev
+  - git clone -b *thebranch* https://github.com/lsstdesc/sn_maf.git
+  - to install the software to run metrics do
+  
+     python sn_maf/setup.py --package=metric --branch=*thebranch*
+  - to install  software to run simulation do
+  
+     python sn_maf/setup.py --package=simulation --branch=*thebranch*
 
+where *thebranch* is the branch to be considered (dev, dev_stable, ...)
+  
 ## **Running SN-MAF metrics**
 
 ### Environnement setup
