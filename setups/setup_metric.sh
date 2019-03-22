@@ -56,20 +56,5 @@ else
 	pip install --prefix=${PWD} ${lib}==2.7.1
     fi
     export PYTHONPATH=${thedir}:$PYTHONPATH
-    pack="sn_utils"
-    if [ ! -d  $pack ]; then
-	echo "Seems that the $pack package you need is not installed."
-	echo "Will do it for you..."
-	where='https://github.com/lsstdesc'
-	echo "...taking packages from "${where}
-
-	echo 'Cloning' $pack
-	git clone $where/$pack.git
-	echo "Moving to the dev branch"
-	cd $pack
-	git branch
-	git checkout dev
-	git branch
-	cd ..
     fi
 fi
