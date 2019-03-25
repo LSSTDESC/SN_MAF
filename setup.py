@@ -68,10 +68,42 @@ class InstallCommand(distutils.cmd.Command):
             self.clone(pack)
 
 
+class PyTest(distutils.cmd.Command):
+    """A custom command to run pytest for Survey Strategy Support Pipeline script"""
+
+    description = 'Run pytest'
+    user_options = [
+        # The format is (long option, short option, description).
+        ('type=', None, 'package to test'),
+    ]
+
+    def initialize_options(self):
+        """Set default values for options."""
+        # Each user option must be listed here with their default value.
+        self.type = ''
+
+    def finalize_options(self):
+        """Post-process options."""
+        if self.type:
+            if self.type not in ['metric']:
+                print('{} tests not implemented -> no test'.format(self.type))
+
+    def run(self):
+        """Run command."""
+
+        cmd = ''
+        if self.type == 'metric':
+            cmd = 'pytest sn_maf/tests/testSNMetrics.py'
+
+        if cmd != '':
+            os.system(cmd)
+
+
 setuptools.setup(
 
     cmdclass={
         'install': InstallCommand,
+        'test': PyTest,
     },
     # Usual setup() args.
     # ...

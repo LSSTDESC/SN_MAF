@@ -22,6 +22,8 @@ where *thebranch* is the branch to be considered (dev, dev_stable, ...)
   - @CCIN2P3: source sn_maf/setups/setup_metric.sh CCIN2P3
 - if you wish to run elsewhere then you need to provide the full path to the setup script corresponding to a release including the lsst_sims package, ie source sn_maf/setups/setup_metric.sh MYENV full_path_to_setup_script_stack.
 
+### Testing the metrics (unittest)
+- python sn_maf/setup.py test --type=metric
 
 ### Running the Cadence metric
 - python sn_maf/run_scripts/run_cadence_metric.py sn_maf/input/param_cadence_metric.yaml
