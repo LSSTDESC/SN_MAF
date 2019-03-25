@@ -100,7 +100,16 @@ class PyTest(distutils.cmd.Command):
 
 
 setuptools.setup(
-
+    name='sn_maf',
+    version='0.1',
+    description='Library for dark energy physics',
+    url='http://github.com/lsstdesc/sn_maf',
+    author='Philippe Gris',
+    author_email='philippe.gris@clermont.in2p3.fr',
+    license='BSD',
+    packages=['sn_maf'],
+    python_requires='>=3.5',
+    zip_safe=False,
     cmdclass={
         'install': InstallCommand,
         'test': PyTest,

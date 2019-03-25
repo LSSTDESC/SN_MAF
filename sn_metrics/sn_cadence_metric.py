@@ -7,7 +7,25 @@ import numpy.lib.recfunctions as rf
 
 class SNCadenceMetric(BaseMetric):
     """
-    Measure mean m5, cadence and zlimit for SN
+    Measure mean m5, cadence per band and per season for SN depth measurements.
+    SN depth estimations are done in sn_plotter/sn_cadencePlotters.py
+    """
+    """Calculate the sum-of-squares energy of the input.
+
+    We use the following definition for energy:
+
+    .. math::
+
+       E_{s} = \left< x(t),x(t) \right> = \int_{-\infty}^{\infty}{|x(t)|^{2}}dt
+
+    Args:
+    x : ndarray
+        Input signal.
+
+    Returns
+    -------
+    e : float
+        Energy of the signal `x`.
     """
 
     def __init__(self, metricName='SNCadenceMetric',
@@ -16,6 +34,15 @@ class SNCadenceMetric(BaseMetric):
                  nightCol='night', obsidCol='observationId', nexpCol='numExposures',
                  vistimeCol='visitTime', coadd=True, names_ref=None,
                  uniqueBlocks=False, config=None, **kwargs):
+        """
+
+        Parameters:
+        ---------------
+        list of simulation variables considered
+        coadd: coaddition per night (bool)
+        names_ref: names of the simulator considered
+
+        """
 
         self.mjdCol = mjdCol
         self.m5Col = m5Col
@@ -39,12 +66,6 @@ class SNCadenceMetric(BaseMetric):
         self.filterNames = np.array(['u', 'g', 'r', 'i', 'z', 'y'])
         self.config = config
 
-        # this is for output
-        """
-        save_status = config['Output']['save']
-        outdir = config['Output']['directory']
-        prodid = config['ProductionID']
-        """
         # sn parameters
         sn_parameters = config['SN parameters']
 
@@ -58,14 +79,34 @@ class SNCadenceMetric(BaseMetric):
                 config['Pixelisation']['nside'], degrees=True)
 
     def run(self, dataSlice, slicePoint=None):
-        # Cut down to only include filters in correct wave range.
+        """
+        Runs the metric for each dataSlice
 
+        Parameters:
+        ---------------
+        dataSlice: simulation data
+        slicePoint:  slicePoint (default None)
+
+
+        Returns:
+        -----------
+        record array with the following fields:
+        fieldRA: RA of the field considered
+        fieldDec: Dec of the field considered
+        season:  season num
+        band:  band
+        m5_mean: mean five sigma depth (over the season)
+        cadence_mean: mean cadence (over the season)
+
+        """
+
+        # Cut down to only include filters in correct wave range.
         goodFilters = np.in1d(dataSlice['filter'], self.filterNames)
         dataSlice = dataSlice[goodFilters]
         if dataSlice.size == 0:
             return None
         dataSlice.sort(order=self.mjdCol)
-        # print('dataslice',np.unique(dataSlice[['fieldRA','fieldDec','season','filter']]),dataSlice.dtype)
+
         time = dataSlice[self.mjdCol]-dataSlice[self.mjdCol].min()
         r = []
         fieldRA = np.mean(dataSlice[self.RaCol])
